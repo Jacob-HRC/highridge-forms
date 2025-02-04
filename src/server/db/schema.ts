@@ -6,7 +6,7 @@ import { sql } from "drizzle-orm";
  * - You can store Clerk user data here if you wish (id, email, name, etc.).
  * - Or you can simply rely on Clerk for identity and only store user IDs that match Clerk's ID.
  */
-export const users = singlestoreTable("users", {
+export const users = singlestoreTable("highridge-forms_users", {
   id: int("id").primaryKey().autoincrement(),
   email: text("email").notNull(),
   name: text("name"),
@@ -19,7 +19,7 @@ export const users = singlestoreTable("users", {
  * - Stores the submitter's name/email (from Clerk) and the reimbursed person's info.
  * - We removed the "total" column to compute it dynamically by summing transactions.
  */
-export const forms = singlestoreTable("forms", {
+export const forms = singlestoreTable("highridge-forms_forms", {
   id: int("id").primaryKey().autoincrement(),
 
   // Link to the user who created/submitted this form
@@ -47,7 +47,7 @@ export const forms = singlestoreTable("forms", {
  * - accountLine & department can be dropdowns in your UI, stored as strings here.
  * - amount is numeric(10,2) for currency.
  */
-export const transactions = singlestoreTable("transactions", {
+export const transactions = singlestoreTable("highridge-forms_transactions", {
   id: int("id").primaryKey().autoincrement(),
 
   // Link back to the parent form
@@ -69,7 +69,7 @@ export const transactions = singlestoreTable("transactions", {
  * - Each row references a transaction.
  * - fileType might be "image/png", "application/pdf", etc.
  */
-export const receipts = singlestoreTable("receipts", {
+export const receipts = singlestoreTable("highridge-forms_receipts", {
   id: int("id").primaryKey().autoincrement(),
 
   transactionId: int("transaction_id").notNull(),
