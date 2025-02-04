@@ -1,5 +1,5 @@
 import { Button } from "~/components/ui/button";
-import { SignInButton, SignUpButton } from "@clerk/nextjs";
+import { SignInButton, SignUpButton, SignedIn, SignedOut, SignOutButton } from "@clerk/nextjs";
 import { ArrowRight } from "lucide-react";
 
 export default function Home() {
@@ -24,17 +24,8 @@ export default function Home() {
           </div>
         </div>
         <div className="flex flex-col items-center gap-4">
-          <SignUpButton mode="modal">
-            <Button variant="default" size="lg" className="gap-2 bg-white/10 hover:bg-sky-500">
-              Get Started
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </SignUpButton>
-          <SignInButton mode="modal">
-            <Button variant="ghost" size="lg" className="text-white hover:text-white/80">
-              Sign In
-            </Button>
-          </SignInButton>
+          
+          
         </div>
       </div>
     </div>
