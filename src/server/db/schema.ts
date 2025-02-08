@@ -1,17 +1,4 @@
-import { int, text, singlestoreTable, bigint, timestamp, date, float } from "drizzle-orm/singlestore-core";
-import { sql } from "drizzle-orm";
-
-/**
- * "users" table:
- * - You can store Clerk user data here if you wish (id, email, name, etc.).
- * - Or you can simply rely on Clerk for identity and only store user IDs that match Clerk's ID.
- */
-export const users = singlestoreTable("highridge-forms_users", {
-  id: int("id").primaryKey().autoincrement(),
-  email: text("email").notNull(),
-  name: text("name"),
-  // Additional user fields as needed
-});
+import { text, singlestoreTable, bigint, timestamp, date, float, varchar } from "drizzle-orm/singlestore-core";
 
 /**
  * "forms" table:
@@ -19,21 +6,19 @@ export const users = singlestoreTable("highridge-forms_users", {
  * - Stores the submitter's name/email (from Clerk) and the reimbursed person's info.
  * - We removed the "total" column to compute it dynamically by summing transactions.
  */
-export const forms = singlestoreTable("highridge-forms_forms", {
-  id: int("id").primaryKey().autoincrement(),
+export const forms = singlestoreTable("highridgeforms_forms", {
+  id: bigint("id", { mode: "number" }).primaryKey().autoincrement(),
 
   // Link to the user who created/submitted this form
-  // onDelete: "cascade" means if a user is deleted, their forms are automatically deleted too.
-  userId: int("user_id")
-    .notNull(),
+  userId: varchar("user_id", { length: 255 }).notNull(),
 
   // The currently logged-in user's info at time of form creation:
-  submitterEmail: text("submitter_email").notNull(),
-  submitterName:  text("submitter_name").notNull(),
+  submitterEmail: varchar("submitter_email", { length: 255 }).notNull(),
+  submitterName: varchar("submitter_name", { length: 255 }).notNull(),
 
   // Person being reimbursed:
-  reimbursedName:  text("reimbursed_name").notNull(),
-  reimbursedEmail: text("reimbursed_email").notNull(),
+  reimbursedName: varchar("reimbursed_name", { length: 255 }).notNull(),
+  reimbursedEmail: varchar("reimbursed_email", { length: 255 }).notNull(),
 
   // Timestamps
   createdAt: timestamp("created_at").defaultNow(),
@@ -47,15 +32,15 @@ export const forms = singlestoreTable("highridge-forms_forms", {
  * - accountLine & department can be dropdowns in your UI, stored as strings here.
  * - amount is numeric(10,2) for currency.
  */
-export const transactions = singlestoreTable("highridge-forms_transactions", {
-  id: int("id").primaryKey().autoincrement(),
+export const transactions = singlestoreTable("highridgeforms_transactions", {
+  id: bigint("id", { mode: "number" }).primaryKey().autoincrement(),
 
   // Link back to the parent form
-  formId: int("form_id").notNull(),
+  formId: bigint("form_id", { mode: "number" }).notNull(),
 
   date: date("date").notNull(),
   accountLine: text("account_line").notNull(),
-  department:  text("department").notNull(),
+  department: text("department").notNull(),
   placeVendor: text("place_vendor").notNull(),
   description: text("description"),
 
@@ -69,12 +54,12 @@ export const transactions = singlestoreTable("highridge-forms_transactions", {
  * - Each row references a transaction.
  * - fileType might be "image/png", "application/pdf", etc.
  */
-export const receipts = singlestoreTable("highridge-forms_receipts", {
-  id: int("id").primaryKey().autoincrement(),
+export const receipts = singlestoreTable("highridgeforms_receipts", {
+  id: bigint("id", { mode: "number" }).primaryKey().autoincrement(),
 
-  transactionId: int("transaction_id").notNull(),
+  transactionId: bigint("transaction_id", { mode: "number" }).notNull(),
 
   // The file is stored as base64 with a known MIME type
   base64Content: text("base64_content").notNull(),
-  fileType:      text("file_type").notNull(),
+  fileType: text("file_type").notNull(),
 });
