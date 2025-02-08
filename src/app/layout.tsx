@@ -3,6 +3,7 @@ import "~/styles/globals.css";
 import { GeistSans } from "geist/font/sans";
 import { type Metadata } from "next";
 import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "HighRidge Forms",
@@ -13,14 +14,21 @@ export const metadata: Metadata = {
 function Header() {
   return (
     <header className="flex justify-between items-center p-4 bg-zinc-800 text-white">
-      <h1 className="text-2xl font-bold">HighRidge Forms</h1>
       <SignedIn>
-        {/* Mount the UserButton component */}
+        <Link href="/dashboard">
+          <h1 className="text-2xl font-bold cursor-pointer">HighRidge Forms</h1>
+        </Link>
+      </SignedIn>
+      <SignedOut>
+        <Link href="/">
+          <h1 className="text-2xl font-bold cursor-pointer">HighRidge Forms</h1>
+        </Link>
+      </SignedOut>
+      <SignedIn>
         <UserButton />
       </SignedIn>
       <SignedOut>
-        {/* Signed out users get sign in button */}
-        <SignInButton mode="modal"/>
+        <SignInButton mode="modal" />
       </SignedOut>
     </header>
   )

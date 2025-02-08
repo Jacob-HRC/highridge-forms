@@ -140,7 +140,7 @@ export default function NewFormPage() {
       console.log(res);
       if (!res.ok) throw new Error("Failed to create form");
       const newForm = await res.json();
-      router.push(`/forms/${newForm.id}`);
+      router.push(`/dashboard`);
     } catch (error) {
       console.error("Error creating form:", error);
       alert("There was an error submitting the form.");

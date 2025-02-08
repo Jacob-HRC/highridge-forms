@@ -24,8 +24,11 @@ export default function Home() {
           </div>
         </div>
         <div className="flex flex-col items-center gap-4">
-          
-          
+          <SignedIn>
+            router.push("/dashboard")
+          </SignedIn>
+
+
         </div>
       </div>
     </div>
