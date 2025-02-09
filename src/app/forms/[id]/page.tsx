@@ -70,7 +70,7 @@ export default function EditFormPage() {
     const form = useForm<FormData>();
     const { control, reset, handleSubmit } = form;
 
-    const { fields } = useFieldArray({
+    const { fields, append } = useFieldArray({
         control,
         name: "transactions",
     });
@@ -221,7 +221,28 @@ export default function EditFormPage() {
 
                     <hr className="my-6" />
 
-                    <h2 className="text-xl font-semibold mb-4">Transactions</h2>
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-xl font-semibold">Transactions</h2>
+                        {isEditing && (
+                            <Button
+                                type="button"
+                                onClick={() => {
+                                    append({
+                                        id: -Date.now(),
+                                        date: new Date().toISOString().slice(0, 10),
+                                        accountLine: ACCOUNT_LINES[0]!,
+                                        department: DEPARTMENTS[0]!,
+                                        placeVendor: '',
+                                        description: '',
+                                        amount: 0,
+                                        receipts: [],
+                                    })
+                                }}
+                            >
+                                Add Transaction
+                            </Button>
+                        )}
+                    </div>
 
                     {fields.map((field, index) => (
                         <div key={field.id} className="border rounded p-4 mb-6 space-y-4">

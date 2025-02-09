@@ -1,16 +1,17 @@
 import { db } from "~/server/db";
 import { forms, transactions, receipts } from "~/server/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 export async function GET(
     request: Request,
     { params }: { params: { id: string } }
 ) {
+    const { id } = await params;
     try {
         const [form] = await db
             .select()
             .from(forms)
-            .where(eq(forms.id, parseInt(params.id)))
+            .where(eq(forms.id, parseInt(id)))
             .limit(1);
 
         if (!form) {
@@ -56,6 +57,7 @@ export async function PUT(
     request: Request,
     { params }: { params: { id: string } }
 ) {
+    const { id } = await params;
     try {
         const data = await request.json();
 
@@ -67,31 +69,68 @@ export async function PUT(
                 reimbursedEmail: data.reimbursedEmail,
                 updatedAt: new Date(),
             })
-            .where(eq(forms.id, parseInt(params.id)));
+            .where(eq(forms.id, parseInt(id)));
 
         // Update transactions and handle receipts
         for (const tx of data.transactions) {
-            // Update transaction
-            await db
-                .update(transactions)
-                .set({
-                    date: new Date(tx.date),
-                    accountLine: tx.accountLine,
-                    department: tx.department,
-                    placeVendor: tx.placeVendor,
-                    description: tx.description,
-                    amount: tx.amount,
-                })
-                .where(eq(transactions.id, tx.id));
+            if (tx.id < 0) { // If ID is negative, it's a new transaction
+                // Insert new transaction
+                await db
+                    .insert(transactions)
+                    .values({
+                        formId: parseInt(id),
+                        date: new Date(tx.date),
+                        accountLine: tx.accountLine,
+                        department: tx.department,
+                        placeVendor: tx.placeVendor,
+                        description: tx.description,
+                        amount: tx.amount,
+                    });
 
-            // Handle new receipts if any
-            if (tx.newFiles?.length) {
-                const receiptsData = tx.newFiles.map((file: File) => ({
-                    transactionId: tx.id,
-                    fileType: file.type,
-                    base64Content: file.toString(),
-                }));
-                await db.insert(receipts).values(receiptsData);
+                // Get the newly inserted transaction
+                const [newTx] = await db
+                    .select()
+                    .from(transactions)
+                    .where(eq(transactions.formId, parseInt(id)))
+                    .orderBy(sql`id desc`)
+                    .limit(1);
+
+                if (!newTx) {
+                    throw new Error("Failed to create new transaction");
+                }
+
+                // Handle new receipts if any
+                if (tx.newFiles?.length) {
+                    const receiptsData = tx.newFiles.map((file: any) => ({
+                        transactionId: newTx.id,
+                        fileType: file.type,
+                        base64Content: file.base64Content,
+                    }));
+                    await db.insert(receipts).values(receiptsData);
+                }
+            } else {
+                // Update existing transaction
+                await db
+                    .update(transactions)
+                    .set({
+                        date: new Date(tx.date),
+                        accountLine: tx.accountLine,
+                        department: tx.department,
+                        placeVendor: tx.placeVendor,
+                        description: tx.description,
+                        amount: tx.amount,
+                    })
+                    .where(eq(transactions.id, tx.id));
+
+                // Handle new receipts if any
+                if (tx.newFiles?.length) {
+                    const receiptsData = tx.newFiles.map((file: any) => ({
+                        transactionId: tx.id,
+                        fileType: file.type,
+                        base64Content: file.base64Content,
+                    }));
+                    await db.insert(receipts).values(receiptsData);
+                }
             }
         }
 
@@ -99,7 +138,7 @@ export async function PUT(
         const [updatedForm] = await db
             .select()
             .from(forms)
-            .where(eq(forms.id, parseInt(params.id)))
+            .where(eq(forms.id, parseInt(id)))
             .limit(1);
 
         if (!updatedForm) {
@@ -144,6 +183,7 @@ export async function DELETE(
     request: Request,
     { params }: { params: { id: string } }
 ) {
+    const { id } = await params;
     try {
         const { receiptId } = await request.json();
         await db
