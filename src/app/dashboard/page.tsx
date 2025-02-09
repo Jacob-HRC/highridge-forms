@@ -28,15 +28,25 @@ export default async function DashboardPage() {
     const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/forms`, {
       method: "GET",
       cache: "no-cache",
+      headers: {
+        'Content-Type': 'application/json',
+      },
     });
 
     if (!res.ok) {
-      error = "Error fetching forms.";
+      const errorData = await res.text();
+      error = `Error fetching forms: ${res.status} ${res.statusText}. ${errorData}`;
     } else {
       forms = await res.json();
     }
   } catch (e) {
-    error = "Error fetching forms.";
+    console.error('Forms fetch error:', e);
+    if (e instanceof Error && 'cause' in e) {
+      const cause = e.cause as { code?: string };
+      error = `Connection error: ${cause?.code || e.message}`;
+    } else {
+      error = `Error fetching forms: ${e instanceof Error ? e.message : 'Unknown error'}`;
+    }
   }
 
   return (
@@ -66,10 +76,8 @@ export default async function DashboardPage() {
         <table className="w-full border-collapse border border-gray-300">
           <thead className="bg-gray-100">
             <tr>
-              <th className="border border-gray-300 p-2">ID</th>
-              <th className="border border-gray-300 p-2">Reimbursed Name</th>
-              <th className="border border-gray-300 p-2">Reimbursed Email</th>
-              <th className="border border-gray-300 p-2">Submitter</th>
+              <th className="border border-gray-300 p-2">Reimbursed</th>
+              <th className="border border-gray-300 p-2">Submitted By</th>
               <th className="border border-gray-300 p-2">Created</th>
               <th className="border border-gray-300 p-2">Actions</th>
             </tr>
@@ -77,9 +85,9 @@ export default async function DashboardPage() {
           <tbody>
             {forms.map((form) => (
               <tr key={form.id}>
-                <td className="border border-gray-300 p-2">{form.id}</td>
-                <td className="border border-gray-300 p-2">{form.reimbursedName}</td>
-                <td className="border border-gray-300 p-2">{form.reimbursedEmail}</td>
+                <td className="border border-gray-300 p-2">
+                  {form.reimbursedName} ({form.reimbursedEmail})
+                </td>
                 <td className="border border-gray-300 p-2">
                   {form.submitterName} ({form.submitterEmail})
                 </td>
