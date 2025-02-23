@@ -16,6 +16,7 @@ export const env = createEnv({
     SINGLESTORE_PASSWORD: z.string().min(1),
     SINGLESTORE_DBNAME: z.string().min(1),
     SINGLESTORE_PORT: z.string().min(1),
+    UPLOADTHING_TOKEN: z.string().min(1),
   },
 
   /**
@@ -42,6 +43,7 @@ export const env = createEnv({
     SINGLESTORE_PASSWORD: process.env.SINGLESTORE_PASSWORD,
     SINGLESTORE_DBNAME: process.env.SINGLESTORE_DBNAME,
     SINGLESTORE_PORT: process.env.SINGLESTORE_PORT,
+    UPLOADTHING_TOKEN: process.env.UPLOADTHING_TOKEN,
 
   },
   /**

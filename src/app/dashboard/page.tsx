@@ -1,6 +1,8 @@
 // app/dashboard/page.tsx
 import { currentUser } from "@clerk/nextjs/server";
+import { SignIn } from "@clerk/nextjs";
 import Link from "next/link";
+import { getForms } from "../serveractions/forms/reimburesementformactions";
 
 type Form = {
   id: number;
@@ -8,8 +10,8 @@ type Form = {
   submitterName: string;
   reimbursedName: string;
   reimbursedEmail: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: Date | null;
+  updatedAt: Date | null;
 };
 
 export default async function DashboardPage() {
@@ -17,36 +19,18 @@ export default async function DashboardPage() {
   const user = await currentUser()
   if (!user) {
     // If no user, you could redirect or show an error
-    return <div className="p-4">Please sign in to view the dashboard.</div>;
+    return <SignIn />;
   }
 
-  // 2. Fetch forms from our REST endpoint
+  // 2. Fetch forms using the server action
   let forms: Form[] = [];
   let error: string | null = null;
 
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/forms`, {
-      method: "GET",
-      cache: "no-cache",
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!res.ok) {
-      const errorData = await res.text();
-      error = `Error fetching forms: ${res.status} ${res.statusText}. ${errorData}`;
-    } else {
-      forms = await res.json();
-    }
+    forms = await getForms(); // Call the server action directly
   } catch (e) {
     console.error('Forms fetch error:', e);
-    if (e instanceof Error && 'cause' in e) {
-      const cause = e.cause as { code?: string };
-      error = `Connection error: ${cause?.code || e.message}`;
-    } else {
-      error = `Error fetching forms: ${e instanceof Error ? e.message : 'Unknown error'}`;
-    }
+    error = `Error fetching forms: ${e instanceof Error ? e.message : 'Unknown error'}`;
   }
 
   return (
@@ -92,7 +76,7 @@ export default async function DashboardPage() {
                   {form.submitterName} ({form.submitterEmail})
                 </td>
                 <td className="border border-gray-300 p-2">
-                  {new Date(form.createdAt).toLocaleDateString()}
+                  {form.createdAt ? new Date(form.createdAt).toLocaleDateString() : 'N/A'}
                 </td>
                 <td className="border border-gray-300 p-2">
                   {/* Link to edit/view this form */}

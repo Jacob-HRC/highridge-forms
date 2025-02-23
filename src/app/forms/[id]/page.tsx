@@ -1,3 +1,4 @@
+// src/app/forms/[id]/page.tsx
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
@@ -21,7 +22,15 @@ import {
     SelectContent,
     SelectItem,
 } from "~/components/ui/select";
-
+import { getFormById } from '~/app/serveractions/forms/reimburesementformactions';
+import { FormValues, reimbursementFormSchema } from '~/lib/schema';
+import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover";
+import { Calendar } from "~/components/ui/calendar";
+import { format } from "date-fns";
+import { cn } from "~/lib/utils";
+import { CalendarIcon, File } from "lucide-react";
+import { FormDescription } from "~/components/ui/form";
+import { updateFormWithFiles } from "~/app/serveractions/forms/reimburesementformactions";
 // Reuse the constants from the new form page
 const ACCOUNT_LINES = ["General Fund", "Missions", "Church Plant"];
 const DEPARTMENTS = ["Worship", "Youth", "Children", "Admin"];
@@ -37,28 +46,6 @@ async function fileToBase64(file: File): Promise<string> {
     });
 }
 
-type FormData = {
-    id: number;
-    submitterEmail: string;
-    submitterName: string;
-    reimbursedName: string;
-    reimbursedEmail: string;
-    transactions: {
-        id: number;
-        date: string;
-        accountLine: string;
-        department: string;
-        placeVendor: string;
-        description: string;
-        amount: number;
-        receipts: {
-            id: number;
-            fileType: string;
-            base64Content: string;
-        }[];
-        newFiles?: FileList | null;
-    }[];
-};
 
 export default function EditFormPage() {
     const params = useParams();
@@ -66,46 +53,99 @@ export default function EditFormPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isEditing, setIsEditing] = useState(false);
+    const [deletedTransactions, setDeletedTransactions] = useState<number[]>([]);
+    const formId = Number(params.id); // Get the form ID from the URL params, assuming it's a number
+    const [formData, setFormData] = useState<FormValues | null>(null);
 
-    const form = useForm<FormData>();
+    const form = useForm<FormValues>();
     const { control, reset, handleSubmit } = form;
 
-    const { fields, append } = useFieldArray({
+    const { fields, append, remove } = useFieldArray({
         control,
         name: "transactions",
     });
 
     useEffect(() => {
-        async function fetchForm() {
+        async function loadForm() {
+            setLoading(true);
+            setError(null);
+
+            if (!formId) { // Move the formId check inside loadForm
+                setError("Invalid form ID in URL.");
+                setLoading(false);
+                return; // Early return if formId is invalid
+            }
+
             try {
-                const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/forms/${params.id}`);
-                if (!res.ok) {
-                    throw new Error(`Failed to fetch form: ${res.status}`);
+                const fetchedData = await getFormById(formId);
+                if (fetchedData) {
+                    const initialFormData: FormValues = {
+                        id: fetchedData.form.id,
+                        userId: fetchedData.form.userId,
+                        formType: fetchedData.form.formType,
+                        submitterEmail: fetchedData.form.submitterEmail,
+                        submitterName: fetchedData.form.submitterName,
+                        reimbursedName: fetchedData.form.reimbursedName,
+                        reimbursedEmail: fetchedData.form.reimbursedEmail,
+                        transactions: fetchedData.transactions.map(tx => ({
+                            id: tx.transactionId,
+                            date: tx.date ? new Date(tx.date) : new Date(),
+                            accountLine: tx.accountLine,
+                            department: tx.department,
+                            placeVendor: tx.placeVendor,
+                            description: tx.description || "",
+                            amount: tx.amount,
+                            receipts: tx.receipts || [],
+                            newFiles: [],
+                        })),
+                    };
+                    setFormData(initialFormData);
+                    reset(initialFormData);
+                } else {
+                    setError(`Form with ID ${formId} not found.`);
                 }
-                const data = await res.json();
-                reset(data); // Populate the form with fetched data
             } catch (e) {
-                setError(e instanceof Error ? e.message : 'Failed to load form');
+                console.error('Error fetching form:', e);
+                setError(`Error loading form: ${e instanceof Error ? e.message : 'Unknown error'}`);
             } finally {
                 setLoading(false);
             }
         }
 
-        fetchForm();
-    }, [params.id, reset]);
+        loadForm(); // Always call loadForm unconditionally inside useEffect
 
-    // Add save handler
-    async function onSubmit(data: FormData) {
+    }, [formId, reset]); // Dependency array remains the same
+
+    useEffect(() => {
+        if (!isEditing) {
+            setDeletedTransactions([]);
+        }
+    }, [isEditing]);
+
+    const handleRemoveTransaction = (index: number) => {
+        const tx = fields[index] as FormValues['transactions'][number];
+        console.log('Removing transaction:', tx);
+        // Check if it's an existing transaction from the database
+        const txId = Number(tx.id);
+        if (!isNaN(txId) && txId > 0) {  // Make sure it's a valid positive number
+            console.log('Adding to deletedTransactions:', txId);
+            setDeletedTransactions(prev => [...prev, txId]);
+        }
+        remove(index);
+    };
+
+    async function onSubmit(data: FormValues) {
         try {
-            // Convert any new files to base64 before sending
             const formDataWithBase64 = {
                 ...data,
+                deletedTransactionIds: [...deletedTransactions],
                 transactions: await Promise.all(
                     data.transactions.map(async (tx) => {
                         if (!tx.newFiles?.length) return tx;
 
                         const base64Files = await Promise.all(
-                            Array.from(tx.newFiles).map(async (file) => ({
+                            Array.from(tx.newFiles as FileList).map(async (file: File) => ({
+                                name: file.name,
                                 type: file.type,
                                 base64Content: await fileToBase64(file)
                             }))
@@ -119,20 +159,28 @@ export default function EditFormPage() {
                 )
             };
 
-            const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/forms/${params.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formDataWithBase64),
+            console.log('Final form data for server action:', formDataWithBase64);
+
+            const result = await updateFormWithFiles({ // Call the server action
+                id: formId,
+                form: formDataWithBase64,
             });
 
-            if (!res.ok) throw new Error('Failed to update form');
-            setIsEditing(false);
-            // Refresh the form data
-            const updatedData = await res.json();
-            reset(updatedData);
-        } catch (e) {
+            if (result.success) {
+                setDeletedTransactions([]);
+                setIsEditing(false);
+                reset({
+                    ...result.form,
+                    transactions: result.transactions,
+                });
+            } else {
+                throw new Error(result.error || 'Failed to update form');
+            }
+
+
+        } catch (e: any) { // Type 'e' as 'any' or 'Error'
             console.error('Error updating form:', e);
-            alert('Failed to update form');
+            alert(`Failed to update form: ${e.message}`); // Display error message to user
         }
     }
 
@@ -146,7 +194,6 @@ export default function EditFormPage() {
 
             if (!res.ok) throw new Error('Failed to delete receipt');
 
-            // Refresh the form data
             const formRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/forms/${params.id}`);
             const updatedData = await formRes.json();
             reset(updatedData);
@@ -192,7 +239,6 @@ export default function EditFormPage() {
 
             <Form {...form}>
                 <form id="form" onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-                    {/* Update form fields to be editable based on isEditing */}
                     <FormField
                         control={control}
                         name="reimbursedName"
@@ -228,8 +274,7 @@ export default function EditFormPage() {
                                 type="button"
                                 onClick={() => {
                                     append({
-                                        id: -Date.now(),
-                                        date: new Date().toISOString().slice(0, 10),
+                                        date: new Date(),
                                         accountLine: ACCOUNT_LINES[0]!,
                                         department: DEPARTMENTS[0]!,
                                         placeVendor: '',
@@ -246,15 +291,49 @@ export default function EditFormPage() {
 
                     {fields.map((field, index) => (
                         <div key={field.id} className="border rounded p-4 mb-6 space-y-4">
+
+                            {/* Date */}
                             <FormField
-                                control={control}
+                                control={form.control}
                                 name={`transactions.${index}.date`}
                                 render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Date</FormLabel>
-                                        <FormControl>
-                                            <Input {...field} readOnly={!isEditing} />
-                                        </FormControl>
+                                    <FormItem className="flex flex-col">
+                                        <FormLabel>Date of Transaction</FormLabel>
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <FormControl>
+                                                    <Button
+                                                        variant={"outline"}
+                                                        className={cn(
+                                                            "w-[240px] pl-3 text-left font-normal",
+                                                            !field.value && "text-muted-foreground"
+                                                        )}
+                                                    >
+                                                        {field.value ? (
+                                                            format(field.value, "PPP")
+                                                        ) : (
+                                                            <span>Pick a date</span>
+                                                        )}
+                                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                    </Button>
+                                                </FormControl>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0" align="start">
+                                                <Calendar
+                                                    mode="single"
+                                                    selected={field.value}
+                                                    onSelect={field.onChange}
+                                                    disabled={(date) =>
+                                                        date > new Date() || date < new Date("1900-01-01")
+                                                    }
+                                                    initialFocus
+                                                />
+                                            </PopoverContent>
+                                        </Popover>
+                                        <FormDescription>
+
+                                        </FormDescription>
+                                        <FormMessage />
                                     </FormItem>
                                 )}
                             />
@@ -342,24 +421,20 @@ export default function EditFormPage() {
                                 )}
                             />
 
-                            {/* Receipts section */}
                             <div className="mt-4">
                                 <FormLabel>Receipts</FormLabel>
-                                <div className="space-y-2">
-                                    {field.receipts?.map((receipt, receiptIndex) => (
-                                        <div key={receipt.id} className="border p-2 rounded">
-                                            <img
-                                                src={receipt.base64Content}
-                                                alt={`Receipt ${receiptIndex + 1}`}
-                                                className="max-w-full h-auto"
-                                            />
+                                <div className="flex flex-wrap gap-4 justify-center">
+                                    {field.receipts?.map((receipt) => (
+                                        <div key={receipt.id} className="flex flex-col items-center border p-2 rounded">
+                                            <File className="h-12 w-12 text-gray-500" />
+                                            <span className="mt-2 text-sm text-center break-all">{receipt.name}</span>
                                             {isEditing && (
                                                 <Button
                                                     type="button"
                                                     variant="destructive"
                                                     size="sm"
                                                     className="mt-2"
-                                                    onClick={() => handleDeleteReceipt(field.id, receipt.id)}
+                                                    onClick={() => handleDeleteReceipt(field.id, receipt.id ?? 0)}
                                                 >
                                                     Delete Receipt
                                                 </Button>
@@ -389,6 +464,19 @@ export default function EditFormPage() {
                                     )}
                                 </div>
                             </div>
+
+                            {isEditing && (
+                                <div className="flex justify-end mt-4 pt-4 border-t">
+                                    <Button
+                                        type="button"
+                                        variant="destructive"
+                                        size="sm"
+                                        onClick={() => handleRemoveTransaction(index)}
+                                    >
+                                        Delete Transaction
+                                    </Button>
+                                </div>
+                            )}
                         </div>
                     ))}
                     <div className="flex justify-between mt-6">
@@ -399,6 +487,31 @@ export default function EditFormPage() {
                         >
                             Back to Dashboard
                         </Button>
+                        {isEditing && (
+                            <>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => {
+                                        append({
+                                            date: new Date(),
+                                            accountLine: ACCOUNT_LINES[0]!,
+                                            department: DEPARTMENTS[0]!,
+                                            placeVendor: '',
+                                            description: '',
+                                            amount: 0,
+                                            receipts: [],
+                                            newFiles: [],
+                                        })
+                                    }}
+                                >
+                                    Add Transaction
+                                </Button>
+                                <Button type="submit">
+                                    Save Changes
+                                </Button>
+                            </>
+                        )}
                     </div>
                 </form>
             </Form>

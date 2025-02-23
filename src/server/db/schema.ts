@@ -1,4 +1,4 @@
-import { text, singlestoreTable, bigint, timestamp, date, float, varchar } from "drizzle-orm/singlestore-core";
+import { text, singlestoreTable, bigint, timestamp, date, float, varchar, longtext } from "drizzle-orm/singlestore-core";
 
 /**
  * "forms" table:
@@ -11,6 +11,8 @@ export const forms = singlestoreTable("highridgeforms_forms", {
 
   // Link to the user who created/submitted this form
   userId: varchar("user_id", { length: 255 }).notNull(),
+
+  formType: varchar("form_type", { length: 255 }).notNull(),
 
   // The currently logged-in user's info at time of form creation:
   submitterEmail: varchar("submitter_email", { length: 255 }).notNull(),
@@ -42,7 +44,7 @@ export const transactions = singlestoreTable("highridgeforms_transactions", {
   accountLine: text("account_line").notNull(),
   department: text("department").notNull(),
   placeVendor: text("place_vendor").notNull(),
-  description: text("description"),
+  description: text("description").notNull(),
 
   // US dollar amount
   amount: float("amount", { precision: 10, scale: 2 }).notNull(),
@@ -58,8 +60,9 @@ export const receipts = singlestoreTable("highridgeforms_receipts", {
   id: bigint("id", { mode: "number" }).primaryKey().autoincrement(),
 
   transactionId: bigint("transaction_id", { mode: "number" }).notNull(),
+  name: text("name").notNull(),
 
   // The file is stored as base64 with a known MIME type
-  base64Content: text("base64_content").notNull(),
+  base64Content: longtext("base64_content").notNull(),
   fileType: text("file_type").notNull(),
 });

@@ -3,6 +3,8 @@
 import { useSearchParams, useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { useForm, useFieldArray } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 
 // Shadcn form components
 import {
@@ -12,10 +14,12 @@ import {
   FormLabel,
   FormControl,
   FormMessage,
+  FormDescription,
 } from "~/components/ui/form";
 import { Input } from "~/components/ui/input";
 import { Textarea } from "~/components/ui/textarea";
 import { Button } from "~/components/ui/button";
+import { Calendar } from "~/components/ui/calendar"
 import {
   Select,
   SelectTrigger,
@@ -23,30 +27,19 @@ import {
   SelectContent,
   SelectItem,
 } from "~/components/ui/select";
+import { Popover, PopoverTrigger, PopoverContent } from "~/components/ui/popover";
+import { format } from "date-fns";
+import { CalendarIcon } from "lucide-react";
+import { cn } from "~/lib/utils";
 
 // Sample data for dropdowns
 const ACCOUNT_LINES = ["General Fund", "Missions", "Church Plant"];
 const DEPARTMENTS = ["Worship", "Youth", "Children", "Admin"];
 
-// Define types for a single transaction and the overall form values
-export type Transaction = {
-  date: string; // "dd/mm/yyyy"
-  accountLine: string;
-  department: string;
-  placeVendor: string;
-  description: string;
-  amount: string; // stored as a string; convert to number on submit
-  files: FileList | null;
-};
+import { reimbursementFormSchema, type FormValues } from "~/lib/schema";
 
-export type FormValues = {
-  userId: string;
-  submitterEmail: string;
-  submitterName: string;
-  reimbursedName: string;
-  reimbursedEmail: string;
-  transactions: Transaction[];
-};
+// Add import for the server action
+import { addForm } from "~/app/serveractions/forms/reimburesementformactions";
 
 export default function NewFormPage() {
   const router = useRouter();
@@ -64,21 +57,23 @@ export default function NewFormPage() {
 
   // Initialize react-hook-form with default values.
   const form = useForm<FormValues>({
+    resolver: zodResolver(reimbursementFormSchema),
     defaultValues: {
       userId: user?.id,
+      formType,
       submitterEmail: submitterEmail,
       submitterName: submitterName,
       reimbursedName: "",
       reimbursedEmail: "",
       transactions: [
         {
-          date: "",
+          date: new Date(),
           accountLine: ACCOUNT_LINES[0],
           department: DEPARTMENTS[0],
           placeVendor: "",
           description: "",
-          amount: "",
-          files: null,
+          amount: 1,
+          receipts: [],
         },
       ],
     },
@@ -92,57 +87,39 @@ export default function NewFormPage() {
     name: "transactions",
   });
 
-  // Form submission handler: convert files to Base64 and submit the form data.
+  // Update the form submission handler
   async function onSubmit(data: FormValues) {
+    console.log('Form submission started');
     try {
-      const transactionData = await Promise.all(
-        data.transactions.map(async (tx) => {
-          let receipts: { fileType: string; base64Content: string }[] = [];
-          if (tx.files) {
-            receipts = await Promise.all(
-              Array.from(tx.files)
-                .slice(0, 2) // limit to 2 files
-                .map(async (file) => {
-                  const base64 = await fileToBase64(file);
-                  return {
-                    fileType: file.type,
-                    base64Content: base64,
-                  };
-                })
-            );
-          }
+      if (!user?.id) {
+        throw new Error("User ID is required");
+      }
 
-          return {
-            date: tx.date, // "dd/mm/yyyy" (parse on the server)
-            accountLine: tx.accountLine,
-            department: tx.department,
-            placeVendor: tx.placeVendor,
-            description: tx.description,
-            amount: parseFloat(tx.amount || "0"),
-            receipts,
-          };
-        })
-      );
-
-      const res = await fetch("/api/forms", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          formType,
-          userId: user?.id,
-          submitterName,
-          submitterEmail,
-          reimbursedName: data.reimbursedName,
-          reimbursedEmail: data.reimbursedEmail,
-          transactions: transactionData,
-        }),
+      console.log('Submitting form data:', {
+        ...data,
+        userId: user.id,
+        formType,
+        submitterEmail,
+        submitterName,
       });
-      console.log(res);
-      if (!res.ok) throw new Error("Failed to create form");
-      const newForm = await res.json();
-      router.push(`/dashboard`);
+
+      const result = await addForm({
+        form: {
+          ...data,
+          userId: user.id,
+          formType,
+          submitterEmail,
+          submitterName,
+        }
+      });
+
+      if (result.success) {
+        router.push('/dashboard');
+      } else {
+        throw new Error('Failed to submit form');
+      }
     } catch (error) {
-      console.error("Error creating form:", error);
+      console.error("Detailed submission error:", error);
       alert("There was an error submitting the form.");
     }
   }
@@ -204,19 +181,45 @@ export default function NewFormPage() {
             >
               {/* Date */}
               <FormField
-                control={control}
+                control={form.control}
                 name={`transactions.${index}.date`}
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      Date (DD/MM/YYYY)
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="DD/MM/YYYY"
-                        {...field}
-                      />
-                    </FormControl>
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Date of Transaction</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "w-[240px] pl-3 text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value ? (
+                              format(field.value, "PPP")
+                            ) : (
+                              <span>Pick a date</span>
+                            )}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          disabled={(date) =>
+                            date > new Date() || date < new Date("1900-01-01")
+                          }
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormDescription>
+
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -344,7 +347,7 @@ export default function NewFormPage() {
               {/* Receipts (File Input) */}
               <FormField
                 control={control}
-                name={`transactions.${index}.files`}
+                name={`transactions.${index}.receipts`}
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
@@ -354,22 +357,27 @@ export default function NewFormPage() {
                       <Input
                         type="file"
                         multiple
-                        onChange={(e) =>
-                          field.onChange(e.target.files)
-                        }
+                        onChange={async (e) => {
+                          if (e.target.files?.length) {
+                            const files = Array.from(e.target.files);
+                            const receipts = await Promise.all(
+                              files.map(async (file) => ({
+                                name: file.name,
+                                fileType: file.type,
+                                base64Content: await fileToBase64(file)
+                              }))
+                            );
+                            field.onChange(receipts);
+                          }
+                        }}
                       />
                     </FormControl>
                     <FormMessage />
-                    {field.value &&
-                      field.value.length > 0 && (
-                        <p className="text-sm mt-1">
-                          {Array.from(field.value)
-                            .map(
-                              (file: File) => file.name
-                            )
-                            .join(", ")}
-                        </p>
-                      )}
+                    {field.value && (
+                      <p className="text-sm mt-1">
+                        {JSON.stringify(field.value)}  {/* TEMPORARY: Display raw field.value */}
+                      </p>
+                    )}
                   </FormItem>
                 )}
               />
@@ -388,13 +396,14 @@ export default function NewFormPage() {
             variant="outline"
             onClick={() =>
               append({
-                date: "",
+                id: 0,
+                date: new Date(),
                 accountLine: ACCOUNT_LINES[0] ?? "",
                 department: DEPARTMENTS[0] ?? "",
                 placeVendor: "",
                 description: "",
-                amount: "",
-                files: null,
+                amount: 1,
+                receipts: [],
               })
             }
           >
@@ -403,7 +412,15 @@ export default function NewFormPage() {
 
           <hr className="my-6" />
 
-          <Button type="submit">Submit Form</Button>
+          <div className="flex justify-end mt-6">
+            <Button
+              onClick={() => handleSubmit(onSubmit)()}
+              type="submit"
+              className="w-full md:w-auto"
+            >
+              Submit Form
+            </Button>
+          </div>
         </form>
       </Form>
     </div>

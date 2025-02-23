@@ -4,7 +4,13 @@
  */
 import "./src/env.js";
 
-/** @type {import("next").NextConfig} */
-const config = {};
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+    experimental: {
+        serverActions: {
+            bodySizeLimit: '4mb'
+        }
+    }
+};
 
-export default config;
+export default nextConfig;
