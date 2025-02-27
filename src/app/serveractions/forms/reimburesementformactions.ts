@@ -220,25 +220,26 @@ export async function getFormById(formId: number) {
     }
 }
 
+// Improved version of the updateFormWithFiles function
 export async function updateFormWithFiles({
-    id,
-    form: formDataWithBase64, // Renamed parameter for clarity
+    id: formId,
+    form: formDataWithBase64,
 }: {
     id: number;
-    form: any; // Type as needed, or use 'any' for now and refine later.  This will be FormValues with newFiles
+    form: any;
 }) {
     try {
-        console.log('Server action: updating form with files', id, formDataWithBase64);
+        console.log('Server action: updating form with files', formId, formDataWithBase64);
 
         // --- 1. Update form data in 'forms' table ---
         const { transactions: submittedTransactions, deletedTransactionIds, ...formUpdateData } = formDataWithBase64;
 
         const updatedFormResult = await db.update(forms)
             .set({
-                ...formUpdateData, // Spread the form fields to update
+                ...formUpdateData,
                 updatedAt: new Date(),
             })
-            .where(eq(forms.id, id));
+            .where(eq(forms.id, formId));
 
         console.log('Form update result:', updatedFormResult);
 
@@ -253,17 +254,23 @@ export async function updateFormWithFiles({
             }
         }
 
-
         // --- 3. Update/Insert transactions and process new receipts ---
         if (submittedTransactions && submittedTransactions.length > 0) {
             for (const tx of submittedTransactions) {
-                if (tx.id > 0) {
+                // Add debug logging to see what's in each transaction
+                console.log('Processing transaction:', tx);
+                console.log('Transaction ID type:', typeof tx.id);
+                console.log('Transaction ID value:', tx.id);
+
+                // Check if this is an existing transaction (has a positive numeric ID)
+                if (tx.id && typeof tx.id === 'number' && tx.id > 0) {
                     // --- 3.1. Update existing transaction ---
-                    const { receipts: existingReceipts, newFiles, ...txUpdateData } = tx; // Separate newFiles
+                    console.log(`Updating existing transaction with ID ${tx.id}`);
+                    const { receipts: existingReceipts, newFiles, ...txUpdateData } = tx;
                     const updatedTransactionResult = await db.update(transactions)
                         .set({
                             ...txUpdateData,
-                            amount: parseFloat(txUpdateData.amount), // Ensure amount is float
+                            amount: parseFloat(String(txUpdateData.amount)),
                         })
                         .where(eq(transactions.id, tx.id));
                     console.log(`Updated transaction ${tx.id} result:`, updatedTransactionResult);
@@ -272,36 +279,46 @@ export async function updateFormWithFiles({
                     if (newFiles && newFiles.length > 0) {
                         console.log(`Inserting new receipts for transaction ${tx.id}:`, newFiles);
                         const receiptInsertResult = await db.insert(receipts).values(
-                            newFiles.map((file: any) => ({ // Type 'file' as 'any' for now, refine type later
+                            newFiles.map((file: any) => ({
                                 transactionId: tx.id,
-                                name: file.name, // Or generate a name if not available
+                                name: file.name,
                                 fileType: file.type,
-                                base64Content: file.base64Content,
+                                base64Content: file.base64Content
                             }))
                         );
                         console.log('Receipt insert result:', receiptInsertResult);
                     }
-
-                } else if (tx.id <= 0) {
+                } else {
                     // --- 3.3. Insert new transaction ---
-                    const { id, receipts: ignoredReceipts, newFiles, ...txInsertData } = tx; // Omit the id field
+                    console.log('Inserting new transaction');
+
+                    // Destructure safely - tx.id might not exist
+                    const { id, receipts: ignoredReceipts, newFiles, ...txInsertData } = tx;
+
+                    console.log('New transaction data to insert:', {
+                        formId,
+                        ...txInsertData,
+                        amount: parseFloat(String(txInsertData.amount))
+                    });
+
                     const transactionInsertResult = await db.insert(transactions)
                         .values({
-                            formId: id,
+                            formId: formId,
                             ...txInsertData,
-                            amount: parseFloat(txInsertData.amount), // Ensure amount is float
+                            amount: parseFloat(String(txInsertData.amount)),
                         });
                     console.log('Transaction insert result:', transactionInsertResult);
 
-                    const newTransactionId = transactionInsertResult?.[0]?.insertId; // Get new transaction ID
+                    const newTransactionId = transactionInsertResult?.[0]?.insertId;
+                    console.log('New transaction ID:', newTransactionId);
 
                     // --- 3.4. Process receipts for new transaction ---
                     if (newFiles && newFiles.length > 0 && newTransactionId) {
                         console.log(`Inserting receipts for new transaction ${newTransactionId}:`, newFiles);
                         const receiptInsertResult = await db.insert(receipts).values(
-                            newFiles.map((file: any) => ({ // Type 'file' as 'any' for now, refine type later
+                            newFiles.map((file: any) => ({
                                 transactionId: newTransactionId,
-                                name: file.name, // Or generate a name if not available
+                                name: file.name,
                                 fileType: file.type,
                                 base64Content: file.base64Content,
                             }))
@@ -312,12 +329,11 @@ export async function updateFormWithFiles({
             }
         }
 
-
         // --- 4. Fetch and return updated form data ---
-        const updatedFormResultForReturn = await db.select().from(forms).where(eq(forms.id, id));
+        const updatedFormResultForReturn = await db.select().from(forms).where(eq(forms.id, formId));
         const updatedForm = updatedFormResultForReturn[0];
 
-        const updatedTransactionsResultForReturn = await db.select().from(transactions).where(eq(transactions.formId, id));
+        const updatedTransactionsResultForReturn = await db.select().from(transactions).where(eq(transactions.formId, formId));
         const updatedTransactionsWithReceipts = await Promise.all(
             updatedTransactionsResultForReturn.map(async (transaction) => {
                 const receiptsResult = await db.select().from(receipts).where(eq(receipts.transactionId, transaction.id));
@@ -328,19 +344,16 @@ export async function updateFormWithFiles({
             })
         );
 
-
         console.log('Successfully updated form and related data.');
 
-        revalidatePath(`/forms/${id}`); // Revalidate the form's page cache
-        revalidatePath(`/dashboard`); // Revalidate the dashboard page (if forms list is there)
-
+        revalidatePath(`/forms/${formId}`);
+        revalidatePath('/dashboard');
 
         return {
             success: true,
             form: updatedForm,
             transactions: updatedTransactionsWithReceipts,
         };
-
 
     } catch (error) {
         console.error('Error updating form with files (server action):', error);
