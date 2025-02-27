@@ -412,10 +412,17 @@ export default function NewFormPage() {
 
           <hr className="my-6" />
 
-          <div className="flex justify-end mt-6">
+          <div className="flex justify-between mt-6">
+            <Button
+              onClick={() => router.push("/dashboard")}
+              type="submit"
+              className="w-full md:w-auto"
+            >
+              Cancel
+            </Button>
             <Button
               onClick={() => handleSubmit(onSubmit)()}
-              type="submit"
+              type="button"
               className="w-full md:w-auto"
             >
               Submit Form
