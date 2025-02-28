@@ -32,6 +32,7 @@ import { CalendarIcon, File } from "lucide-react";
 import { FormDescription } from "~/components/ui/form";
 import { updateFormWithFiles } from "~/app/serveractions/forms/reimburesementformactions";
 import FormPdfButton from "~/components/form-pdf-button";
+import { deleteReceipt } from "~/app/serveractions/forms/reimburesementformactions";
 // Reuse the constants from the new form page
 const ACCOUNT_LINES = ["General Fund", "Missions", "Church Plant"];
 const DEPARTMENTS = ["Worship", "Youth", "Children", "Admin"];
@@ -201,20 +202,46 @@ export default function EditFormPage() {
 
     async function handleDeleteReceipt(transactionId: number, receiptId: number) {
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/forms/${params.id}`, {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ receiptId }),
+            // Show confirmation dialog
+            if (!confirm("Are you sure you want to delete this receipt?")) {
+                return; // User cancelled the deletion
+            }
+
+            // Call the server action directly
+            const result = await deleteReceipt({
+                formId: formId, // Use the formId from the page parameters
+                receiptId: receiptId
             });
 
-            if (!res.ok) throw new Error('Failed to delete receipt');
+            if (!result.success) {
+                throw new Error(result.error || 'Failed to delete receipt');
+            }
 
-            const formRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/forms/${params.id}`);
-            const updatedData = await formRes.json();
-            reset(updatedData);
+            // Refresh the form data to show the updated state
+            const updatedFormData = await getFormById(formId);
+            if (updatedFormData) {
+                const refreshedFormData = {
+                    ...updatedFormData.form,
+                    transactions: updatedFormData.transactions.map(tx => ({
+                        id: tx.transactionId,
+                        date: tx.date ? new Date(tx.date) : new Date(),
+                        accountLine: tx.accountLine,
+                        department: tx.department,
+                        placeVendor: tx.placeVendor,
+                        description: tx.description || "",
+                        amount: tx.amount,
+                        receipts: tx.receipts || [],
+                        newFiles: [],
+                    })),
+                };
+                reset(refreshedFormData);
+            }
+
+            // Show success message
+            alert('Receipt deleted successfully');
         } catch (e) {
             console.error('Error deleting receipt:', e);
-            alert('Failed to delete receipt');
+            alert(`Failed to delete receipt: ${e instanceof Error ? e.message : 'Unknown error'}`);
         }
     }
 
@@ -460,7 +487,11 @@ export default function EditFormPage() {
                                                     variant="destructive"
                                                     size="sm"
                                                     className="mt-2"
-                                                    onClick={() => handleDeleteReceipt(field.id, receipt.id ?? 0)}
+                                                    onClick={() => handleDeleteReceipt(
+                                                        // Make sure we're using the correct transaction ID
+                                                        form.getValues(`transactions.${index}.id`) as number,
+                                                        receipt.id ?? 0
+                                                    )}
                                                 >
                                                     Delete Receipt
                                                 </Button>

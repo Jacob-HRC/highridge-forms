@@ -20,70 +20,67 @@ export async function updateForm({
     return form;
 }
 
+// src/app/serveractions/forms/reimburesementformactions.ts
+// Update the existing deleteReceipt function with this implementation:
+
+// src/app/serveractions/forms/reimburesementformactions.ts
+// Update the existing deleteReceipt function with this implementation:
+
 export async function deleteReceipt({
     formId,
     receiptId,
 }: {
-    formId: string;
+    formId: number;
     receiptId: number;
 }) {
-    console.log('Server action: deleting receipt', receiptId, 'from form', formId);
-    // Insert your deletion logic here (e.g. remove the receipt from your database)
-    // For demonstration, we simply log and return.
-    return;
+    try {
+        console.log('Server action: deleting receipt', receiptId, 'from form', formId);
+
+        // First, verify that the receipt exists
+        const receiptResult = await db.select().from(receipts).where(eq(receipts.id, receiptId));
+
+        if (!receiptResult || receiptResult.length === 0) {
+            console.error(`Receipt with ID ${receiptId} not found.`);
+            return { success: false, error: 'Receipt not found' };
+        }
+
+        // Get the transaction ID for this receipt to validate form ownership
+        const transactionId = receiptResult[0].transactionId;
+
+        // Verify the transaction belongs to the form
+        const transactionResult = await db.select()
+            .from(transactions)
+            .where(eq(transactions.id, transactionId));
+
+        if (!transactionResult || transactionResult.length === 0) {
+            console.error(`Transaction with ID ${transactionId} not found.`);
+            return { success: false, error: 'Transaction not found' };
+        }
+
+        // Verify the transaction belongs to the specified form
+        if (transactionResult[0].formId !== formId) {
+            console.error(`Transaction ${transactionId} does not belong to form ${formId}.`);
+            return { success: false, error: 'Unauthorized access' };
+        }
+
+        // Delete the receipt
+        const deleteResult = await db.delete(receipts).where(eq(receipts.id, receiptId));
+        console.log('Receipt delete result:', deleteResult);
+
+        // Revalidate the form page to reflect changes
+        revalidatePath(`/forms/${formId}`);
+
+        return { success: true };
+    } catch (error) {
+        console.error('Error deleting receipt:', error);
+        return {
+            success: false,
+            error: `Failed to delete receipt: ${error instanceof Error ? error.message : 'Unknown error'}`
+        };
+    }
 }
 
-export async function deleteTransaction({
-    formId,
-    transactionId,
-}: {
-    formId: string;
-    transactionId: number;
-}) {
-    console.log('Server action: deleting transaction', transactionId, 'from form', formId);
-    // Insert your deletion logic here (e.g. remove the transaction from your database)
-    // For demonstration, we simply log and return.
-    return;
-}
 
-export async function addTransaction({
-    formId,
-    transaction,
-}: {
-    formId: string;
-    transaction: any;
-}) {
-    console.log('Server action: adding transaction', transaction, 'to form', formId);
-    // Insert your addition logic here (e.g. add the transaction to your database)
-    // For demonstration, we simply log and return.
-    return;
-}
-
-export async function addReceipt({
-    formId,
-    receipt,
-}: {
-    formId: string;
-    receipt: any;
-}) {
-    console.log('Server action: adding receipt', receipt, 'to form', formId);
-    // Insert your addition logic here (e.g. add the receipt to your database)
-    // For demonstration, we simply log and return.
-    return;
-}
-
-export async function updateTransaction({
-    formId,
-    transaction,
-}: {
-    formId: string;
-    transaction: any;
-}) {
-    console.log('Server action: updating transaction', transaction, 'to form', formId);
-    // Insert your update logic here (e.g. update the transaction in your database)
-    // For demonstration, we simply log and return.
-    return;
-}
 
 export async function addForm({
     form,
