@@ -5,11 +5,15 @@ export const receiptSchema = z.object({
     name: z.string(),
     fileType: z.string(),
     base64Content: z.string(),
+    createdAt: z.date().default(new Date()),
+    updatedAt: z.date().default(new Date()),
 });
 
 export const transactionSchema = z.object({
     id: z.number().optional(),
     date: z.date(),
+    createdAt: z.date().default(new Date()),
+    updatedAt: z.date().default(new Date()),
     accountLine: z.string().min(1, "Account line is required"),
     department: z.string().min(1, "Department is required"),
     placeVendor: z.string().min(1, "Place/Vendor is required"),
@@ -27,8 +31,8 @@ export const reimbursementFormSchema = z.object({
     submitterName: z.string().min(1, "Name is required"),
     reimbursedName: z.string().min(1, "Reimbursed name is required"),
     reimbursedEmail: z.string().email("Invalid email"),
-    createdAt: z.date(),
-    updatedAt: z.date(),
+    createdAt: z.date().default(new Date()),
+    updatedAt: z.date().default(new Date()),
     transactions: z.array(transactionSchema).min(1, "At least one transaction is required"),
 });
 

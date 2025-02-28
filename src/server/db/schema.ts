@@ -36,6 +36,8 @@ export const forms = singlestoreTable("highridgeforms_forms", {
  */
 export const transactions = singlestoreTable("highridgeforms_transactions", {
   id: bigint("id", { mode: "number" }).primaryKey().autoincrement(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 
   // Link back to the parent form
   formId: bigint("form_id", { mode: "number" }).notNull(),
@@ -58,6 +60,8 @@ export const transactions = singlestoreTable("highridgeforms_transactions", {
  */
 export const receipts = singlestoreTable("highridgeforms_receipts", {
   id: bigint("id", { mode: "number" }).primaryKey().autoincrement(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 
   transactionId: bigint("transaction_id", { mode: "number" }).notNull(),
   name: text("name").notNull(),

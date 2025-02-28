@@ -81,6 +81,12 @@ export default function EditFormPage() {
             try {
                 const fetchedData = await getFormById(formId);
                 if (fetchedData) {
+                    // Sort transactions by createdAt (oldest to newest)
+                    const sortedTransactions = [...fetchedData.transactions].sort((a, b) => {
+                        const createdAtA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                        const createdAtB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                        return createdAtA - createdAtB;
+                    });
                     const initialFormData: FormValues = {
                         id: fetchedData.form.id,
                         userId: fetchedData.form.userId,
@@ -94,6 +100,8 @@ export default function EditFormPage() {
                         transactions: fetchedData.transactions.map(tx => ({
                             id: tx.transactionId,
                             date: tx.date ? new Date(tx.date) : new Date(),
+                            createdAt: tx.createdAt ? new Date(tx.createdAt) : new Date(),
+                            updatedAt: tx.updatedAt ? new Date(tx.updatedAt) : new Date(),
                             accountLine: tx.accountLine,
                             department: tx.department,
                             placeVendor: tx.placeVendor,
@@ -162,7 +170,7 @@ export default function EditFormPage() {
                             Array.from(tx.newFiles as FileList).map(async (file: File) => ({
                                 name: file.name,
                                 type: file.type,
-                                base64Content: await fileToBase64(file)
+                                base64Content: await fileToBase64(file),
                             }))
                         );
 
@@ -328,6 +336,8 @@ export default function EditFormPage() {
                                 onClick={() => {
                                     append({
                                         date: new Date(),
+                                        createdAt: new Date(),
+                                        updatedAt: new Date(),
                                         accountLine: ACCOUNT_LINES[0]!,
                                         department: DEPARTMENTS[0]!,
                                         placeVendor: '',
@@ -552,6 +562,8 @@ export default function EditFormPage() {
                                     onClick={() => {
                                         append({
                                             date: new Date(),
+                                            createdAt: new Date(),
+                                            updatedAt: new Date(),
                                             accountLine: ACCOUNT_LINES[0]!,
                                             department: DEPARTMENTS[0]!,
                                             placeVendor: '',

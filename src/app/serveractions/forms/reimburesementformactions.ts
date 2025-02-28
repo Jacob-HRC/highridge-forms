@@ -7,25 +7,6 @@ import { z } from "zod";
 import { reimbursementFormSchema, type FormValues } from "~/lib/schema";
 import { revalidatePath } from "next/cache";
 
-export async function updateForm({
-    id,
-    form,
-}: {
-    id: string;
-    form: any;
-}) {
-    console.log('Server action: updating form', id, form);
-    // Insert your update logic here (e.g. update your database)
-    // For demonstration, we simply return the updated form data.
-    return form;
-}
-
-// src/app/serveractions/forms/reimburesementformactions.ts
-// Update the existing deleteReceipt function with this implementation:
-
-// src/app/serveractions/forms/reimburesementformactions.ts
-// Update the existing deleteReceipt function with this implementation:
-
 export async function deleteReceipt({
     formId,
     receiptId,
@@ -80,8 +61,6 @@ export async function deleteReceipt({
     }
 }
 
-
-
 export async function addForm({
     form,
 }: {
@@ -128,6 +107,8 @@ export async function addForm({
                     .values({
                         formId: newFormId,
                         date: tx.date,
+                        createdAt: tx.createdAt,
+                        updatedAt: tx.updatedAt,
                         accountLine: tx.accountLine,
                         department: tx.department,
                         placeVendor: tx.placeVendor,
@@ -142,6 +123,8 @@ export async function addForm({
                     const receiptResult = await db.insert(receipts).values(
                         tx.receipts.map(receipt => ({
                             transactionId: newTransactionId,
+                            createdAt: receipt.createdAt,
+                            updatedAt: receipt.updatedAt,
                             name: receipt.name,
                             fileType: receipt.fileType,
                             base64Content: receipt.base64Content,
@@ -217,7 +200,6 @@ export async function getFormById(formId: number) {
     }
 }
 
-// Improved version of the updateFormWithFiles function
 export async function updateFormWithFiles({
     id: formId,
     form: formDataWithBase64,
@@ -280,7 +262,10 @@ export async function updateFormWithFiles({
                                 transactionId: tx.id,
                                 name: file.name,
                                 fileType: file.type,
-                                base64Content: file.base64Content
+                                base64Content: file.base64Content,
+                                createdAt: file.createdAt,
+                                updatedAt: file.updateAt
+
                             }))
                         );
                         console.log('Receipt insert result:', receiptInsertResult);
@@ -318,6 +303,8 @@ export async function updateFormWithFiles({
                                 name: file.name,
                                 fileType: file.type,
                                 base64Content: file.base64Content,
+                                createdAt: file.createdAt,
+                                updatedAt: file.updateAt
                             }))
                         );
                         console.log('Receipt insert result (for new transaction):', receiptInsertResult);
