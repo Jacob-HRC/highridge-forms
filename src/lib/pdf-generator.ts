@@ -1,291 +1,286 @@
 // src/lib/pdf-generator.ts
-import * as pdfMake from 'pdfmake/build/pdfmake';
-import * as pdfFonts from 'pdfmake/build/vfs_fonts';
-import { TDocumentDefinitions } from 'pdfmake/interfaces';
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
-// Configure pdfMake with the virtual file system for fonts
-(pdfMake as any).vfs = pdfFonts.pdfMake.vfs;
+export async function generateFormPdf(formData: any): Promise<Uint8Array> {
+    try {
+        console.log("Starting PDF generation with data:", JSON.stringify({
+            formId: formData.form?.id,
+            formType: formData.form?.formType,
+            transactionCount: formData.transactions?.length || 0
+        }));
 
-// Define default fonts
-pdfMake.fonts = {
-    Roboto: {
-        normal: 'Roboto-Regular.ttf',
-        bold: 'Roboto-Medium.ttf',
-        italics: 'Roboto-Italic.ttf',
-        bolditalics: 'Roboto-MediumItalic.ttf'
-    }
-};
-
-export function generateFormPdf(formData: any): Promise<Uint8Array> {
-    return new Promise((resolve, reject) => {
-        try {
-            console.log("Starting PDF generation with data:", JSON.stringify({
-                formId: formData.form?.id,
-                formType: formData.form?.formType,
-                transactionCount: formData.transactions?.length || 0
-            }));
-
-            // Validate input data structure to catch issues early
-            if (!formData?.form || !formData?.transactions) {
-                throw new Error("Invalid form data structure. Missing 'form' or 'transactions'.");
-            }
-
-            // Calculate total amount - with fallback values for safety
-            const totalAmount = formData.transactions.reduce(
-                (sum: number, tx: any) => sum + (typeof tx.amount === 'number' ? tx.amount : 0),
-                0
-            );
-
-            // Format date to a readable string
-            const formatDate = (date: Date | null) => {
-                if (!date) return 'N/A';
-                return new Date(date).toLocaleDateString();
-            };
-
-            // Create document definition with explicit font settings
-            const docDefinition: TDocumentDefinitions = {
-                // Explicitly set the default font
-                defaultStyle: {
-                    font: 'Roboto'
-                },
-                content: [
-                    // Header
-                    {
-                        text: `${formData.form.formType} Form`,
-                        style: 'header',
-                        alignment: 'center',
-                        margin: [0, 0, 0, 20],
-                    },
-
-                    // Form details
-                    {
-                        text: 'Form Details',
-                        style: 'subheader',
-                        margin: [0, 20, 0, 10],
-                    },
-                    {
-                        columns: [
-                            {
-                                width: '50%',
-                                text: [
-                                    { text: 'Form ID: ', bold: true },
-                                    `${formData.form.id}\n`,
-                                    { text: 'Created: ', bold: true },
-                                    `${formatDate(formData.form.createdAt)}\n`,
-                                    { text: 'Updated: ', bold: true },
-                                    `${formatDate(formData.form.updatedAt)}\n`,
-                                ],
-                            },
-                            {
-                                width: '50%',
-                                text: [
-                                    { text: 'Submitted By: ', bold: true },
-                                    `${formData.form.submitterName}\n`,
-                                    { text: 'Submitter Email: ', bold: true },
-                                    `${formData.form.submitterEmail}\n`,
-                                    { text: 'Total Amount: ', bold: true },
-                                    `$${totalAmount.toFixed(2)}\n`,
-                                ],
-                            },
-                        ],
-                    },
-
-                    // Reimbursement details
-                    {
-                        text: 'Reimbursement Information',
-                        style: 'subheader',
-                        margin: [0, 20, 0, 10],
-                    },
-                    {
-                        columns: [
-                            {
-                                width: '50%',
-                                text: [
-                                    { text: 'Reimbursed To: ', bold: true },
-                                    `${formData.form.reimbursedName}\n`,
-                                ],
-                            },
-                            {
-                                width: '50%',
-                                text: [
-                                    { text: 'Reimbursed Email: ', bold: true },
-                                    `${formData.form.reimbursedEmail}\n`,
-                                ],
-                            },
-                        ],
-                    },
-
-                    // Transactions
-                    {
-                        text: 'Transactions',
-                        style: 'subheader',
-                        margin: [0, 20, 0, 10],
-                    },
-                ],
-                styles: {
-                    header: {
-                        fontSize: 24,
-                        bold: true,
-                        font: 'Roboto' // Explicitly set font for this style
-                    },
-                    subheader: {
-                        fontSize: 16,
-                        bold: true,
-                        font: 'Roboto' // Explicitly set font for this style
-                    },
-                    tableHeader: {
-                        bold: true,
-                        fontSize: 12,
-                        color: 'black',
-                        fillColor: '#eeeeee',
-                        font: 'Roboto' // Explicitly set font for this style
-                    },
-                },
-            };
-
-            // Add each transaction with its receipts
-            formData.transactions.forEach((transaction: any, index: number) => {
-                const transactionContent = {
-                    stack: [
-                        {
-                            text: `Transaction #${index + 1}`,
-                            style: 'subheader',
-                            margin: [0, 10, 0, 5],
-                        },
-                        {
-                            table: {
-                                headerRows: 1,
-                                widths: ['*', '*', '*', '*', '*'],
-                                body: [
-                                    [
-                                        { text: 'Date', style: 'tableHeader' },
-                                        { text: 'Account Line', style: 'tableHeader' },
-                                        { text: 'Department', style: 'tableHeader' },
-                                        { text: 'Place/Vendor', style: 'tableHeader' },
-                                        { text: 'Amount', style: 'tableHeader' },
-                                    ],
-                                    [
-                                        formatDate(new Date(transaction.date)),
-                                        transaction.accountLine,
-                                        transaction.department,
-                                        transaction.placeVendor,
-                                        `$${transaction.amount.toFixed(2)}`,
-                                    ],
-                                ],
-                            },
-                            margin: [0, 5, 0, 10],
-                        },
-                        {
-                            text: 'Description:',
-                            bold: true,
-                            margin: [0, 5, 0, 2],
-                        },
-                        {
-                            text: transaction.description,
-                            margin: [0, 0, 0, 10],
-                        },
-                    ],
-                };
-
-                (docDefinition.content as any[]).push(transactionContent);
-
-                // Add receipts if they exist
-                if (transaction.receipts && transaction.receipts.length > 0) {
-                    (docDefinition.content as any[]).push({
-                        text: `Receipts for Transaction #${index + 1}:`,
-                        bold: true,
-                        margin: [0, 10, 0, 5],
-                    });
-
-                    transaction.receipts.forEach((receipt: any) => {
-                        try {
-                            // Check if the receipt has valid content
-                            if (!receipt.base64Content) {
-                                console.warn(`Receipt ${receipt.id} has no base64Content, skipping image render`);
-                                (docDefinition.content as any[]).push({
-                                    text: `${receipt.name} (Content not available)`,
-                                    margin: [0, 5, 0, 10],
-                                });
-                                return;
-                            }
-
-                            // Only add images, not other file types
-                            if (receipt.fileType?.startsWith('image/')) {
-                                try {
-                                    // Try to parse the base64 content
-                                    let imageData = receipt.base64Content;
-
-                                    // Ensure we have a valid data URL format
-                                    if (!imageData.startsWith('data:')) {
-                                        imageData = `data:${receipt.fileType};base64,${imageData}`;
-                                    }
-
-                                    (docDefinition.content as any[]).push({
-                                        text: receipt.name,
-                                        margin: [0, 5, 0, 2],
-                                    });
-                                    (docDefinition.content as any[]).push({
-                                        image: imageData,
-                                        width: 400,
-                                        margin: [0, 5, 0, 20],
-                                    });
-                                } catch (imageError) {
-                                    console.error(`Error processing image receipt ${receipt.id}:`, imageError);
-                                    (docDefinition.content as any[]).push({
-                                        text: `${receipt.name} (Error processing image)`,
-                                        margin: [0, 5, 0, 10],
-                                    });
-                                }
-                            } else {
-                                // For non-image receipts (like PDFs), just show the filename
-                                (docDefinition.content as any[]).push({
-                                    text: `Receipt (${receipt.fileType || 'Unknown type'}): ${receipt.name}`,
-                                    margin: [0, 5, 0, 10],
-                                });
-                            }
-                        } catch (receiptError) {
-                            console.error(`Error processing receipt:`, receiptError);
-                            (docDefinition.content as any[]).push({
-                                text: `Receipt (processing error): ${receipt.name || 'Unknown receipt'}`,
-                                margin: [0, 5, 0, 10],
-                            });
-                        }
-                    });
-                }
-
-                // Add a separator between transactions (except for the last one)
-                if (index < formData.transactions.length - 1) {
-                    (docDefinition.content as any[]).push({
-                        canvas: [
-                            {
-                                type: 'line',
-                                x1: 0,
-                                y1: 5,
-                                x2: 515,
-                                y2: 5,
-                                lineWidth: 1,
-                                lineColor: '#CCCCCC',
-                            },
-                        ],
-                        margin: [0, 10, 0, 10],
-                    });
-                }
-            });
-
-            // Create PDF and return as Uint8Array
-            console.log("Creating PDF document...");
-            const pdfDocGenerator = pdfMake.createPdf(docDefinition);
-            pdfDocGenerator.getBuffer((buffer) => {
-                console.log("PDF generated successfully, buffer size:", buffer.length);
-                resolve(buffer);
-            });
-        } catch (error) {
-            console.error('Error generating PDF:', error);
-            if (error instanceof Error) {
-                console.error('Error details:', error.message);
-                console.error('Error stack:', error.stack);
-            }
-            reject(error);
+        // Validate input data structure to catch issues early
+        if (!formData?.form || !formData?.transactions) {
+            throw new Error("Invalid form data structure. Missing 'form' or 'transactions'.");
         }
-    });
+
+        // Create a new PDF document
+        const pdfDoc = await PDFDocument.create();
+
+        // Embed the standard font
+        const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+        const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+        // Add the first page
+        let page = pdfDoc.addPage([600, 800]);
+
+        // Set some initial variables for positioning
+        let currentPage = page;
+        let yPos = 750;
+        const margin = 50;
+        const lineHeight = 15;
+        const smallLineHeight = 12;
+
+        // Function to ensure we have enough space on the page
+        const ensureSpace = (requiredSpace: number): void => {
+            if (yPos - requiredSpace < margin) {
+                currentPage = pdfDoc.addPage([600, 800]);
+                yPos = 750;
+            }
+        };
+
+        // Function to add text with the specified font
+        const addText = (text: string, x: number, y: number, size: number, selectedFont = font): void => {
+            currentPage.drawText(text, {
+                x,
+                y,
+                size,
+                font: selectedFont,
+            });
+        };
+
+        // Add title
+        addText(`${formData.form.formType} Form`, 300 - (font.widthOfTextAtSize(`${formData.form.formType} Form`, 20) / 2), yPos, 20, boldFont);
+        yPos -= lineHeight * 2;
+
+        // Format date to a readable string
+        const formatDate = (date: string | Date | null): string => {
+            if (!date) return 'N/A';
+            return new Date(date).toLocaleDateString();
+        };
+
+        // Calculate total amount
+        const totalAmount = formData.transactions.reduce(
+            (sum: number, tx: any) => sum + (typeof tx.amount === 'number' ? tx.amount : 0),
+            0
+        );
+
+        // Form Details section
+        ensureSpace(100);
+        addText('Form Details', margin, yPos, 16, boldFont);
+        yPos -= lineHeight * 1.5;
+
+        addText(`Form ID: ${formData.form.id}`, margin, yPos, 10);
+        addText(`Created: ${formatDate(formData.form.createdAt)}`, margin + 150, yPos, 10);
+        yPos -= lineHeight;
+
+        addText(`Submitted By: ${formData.form.submitterName}`, margin, yPos, 10);
+        addText(`Updated: ${formatDate(formData.form.updatedAt)}`, margin + 150, yPos, 10);
+        yPos -= lineHeight;
+
+        addText(`Submitter Email: ${formData.form.submitterEmail}`, margin, yPos, 10);
+        addText(`Total Amount: $${totalAmount.toFixed(2)}`, margin + 150, yPos, 10);
+        yPos -= lineHeight * 2;
+
+        // Reimbursement Information section
+        ensureSpace(80);
+        addText('Reimbursement Information', margin, yPos, 16, boldFont);
+        yPos -= lineHeight * 1.5;
+
+        addText(`Reimbursed To: ${formData.form.reimbursedName}`, margin, yPos, 10);
+        yPos -= lineHeight;
+
+        addText(`Reimbursed Email: ${formData.form.reimbursedEmail}`, margin, yPos, 10);
+        yPos -= lineHeight * 2;
+
+        // Transactions section
+        ensureSpace(40);
+        addText('Transactions', margin, yPos, 16, boldFont);
+        yPos -= lineHeight * 1.5;
+
+        // Loop through each transaction
+        for (let i = 0; i < formData.transactions.length; i++) {
+            const transaction = formData.transactions[i];
+
+            ensureSpace(120); // Ensure enough space for transaction header and details
+
+            // Transaction header
+            addText(`Transaction #${i + 1}`, margin, yPos, 14, boldFont);
+            yPos -= lineHeight * 1.5;
+
+            // Transaction details
+            addText(`Date: ${formatDate(transaction.date)}`, margin + 10, yPos, 10);
+            yPos -= smallLineHeight;
+
+            addText(`Account Line: ${transaction.accountLine}`, margin + 10, yPos, 10);
+            yPos -= smallLineHeight;
+
+            addText(`Department: ${transaction.department}`, margin + 10, yPos, 10);
+            yPos -= smallLineHeight;
+
+            addText(`Place/Vendor: ${transaction.placeVendor}`, margin + 10, yPos, 10);
+            yPos -= smallLineHeight;
+
+            addText(`Amount: $${transaction.amount.toFixed(2)}`, margin + 10, yPos, 10);
+            yPos -= smallLineHeight;
+
+            // Description might wrap, so we'll handle it differently
+            addText('Description:', margin + 10, yPos, 10, boldFont);
+            yPos -= smallLineHeight;
+
+            const description = transaction.description || 'No description provided';
+            addText(description, margin + 20, yPos, 10);
+            yPos -= lineHeight * 1.5;
+
+            // Handle receipts if they exist
+            if (transaction.receipts && transaction.receipts.length > 0) {
+                ensureSpace(40); // Ensure space for receipts header
+
+                addText(`Receipts for Transaction #${i + 1}:`, margin + 10, yPos, 10, boldFont);
+                yPos -= lineHeight;
+
+                for (const receipt of transaction.receipts) {
+                    try {
+                        if (!receipt.base64Content) {
+                            addText(`${receipt.name} (Content not available)`, margin + 20, yPos, 10);
+                            yPos -= smallLineHeight;
+                            continue;
+                        }
+
+                        // Display receipt name
+                        addText(receipt.name, margin + 20, yPos, 10);
+                        yPos -= lineHeight;
+
+                        // Add image if it's an image type
+                        if (receipt.fileType?.startsWith('image/')) {
+                            ensureSpace(220); // Ensure space for image
+
+                            // Extract the base64 content from the data URL
+                            let base64Data = receipt.base64Content;
+                            if (base64Data.startsWith('data:')) {
+                                const commaIndex = base64Data.indexOf(',');
+                                if (commaIndex !== -1) {
+                                    base64Data = base64Data.substring(commaIndex + 1);
+                                }
+                            }
+
+                            // Embed the image
+                            let image;
+                            if (receipt.fileType.includes('png')) {
+                                image = await pdfDoc.embedPng(base64Data);
+                            } else if (receipt.fileType.includes('jpg') || receipt.fileType.includes('jpeg')) {
+                                image = await pdfDoc.embedJpg(base64Data);
+                            }
+
+                            if (image) {
+                                // Calculate dimensions to fit within page width while maintaining aspect ratio
+                                const maxWidth = 400;
+                                const imgWidth = Math.min(image.width, maxWidth);
+                                const imgHeight = image.height * (imgWidth / image.width);
+
+                                // Check if the image fits on the current page
+                                ensureSpace(imgHeight + 20);
+
+                                // Draw the image
+                                currentPage.drawImage(image, {
+                                    x: margin + 20,
+                                    y: yPos - imgHeight,
+                                    width: imgWidth,
+                                    height: imgHeight,
+                                });
+
+                                yPos -= (imgHeight + lineHeight);
+                            }
+                        } else if (receipt.fileType === 'application/pdf') {
+                            // For PDF files, try to embed them
+                            try {
+                                // Extract base64 content
+                                let base64Data = receipt.base64Content;
+                                if (base64Data.startsWith('data:')) {
+                                    const commaIndex = base64Data.indexOf(',');
+                                    if (commaIndex !== -1) {
+                                        base64Data = base64Data.substring(commaIndex + 1);
+                                    }
+                                }
+
+                                // Convert base64 to Uint8Array
+                                const binaryString = atob(base64Data);
+                                const bytes = new Uint8Array(binaryString.length);
+                                for (let i = 0; i < binaryString.length; i++) {
+                                    bytes[i] = binaryString.charCodeAt(i);
+                                }
+
+                                // Load the PDF
+                                const embedPdf = await PDFDocument.load(bytes);
+                                const [firstPage] = await pdfDoc.embedPdf(embedPdf, [0]);
+
+                                // Add the PDF page
+                                ensureSpace(300); // Ensure space for embedded PDF
+                                const pdfPage = pdfDoc.addPage();
+
+                                // Add text indicating this is an embedded receipt
+                                pdfPage.drawText(`Embedded PDF Receipt: ${receipt.name}`, {
+                                    x: 50,
+                                    y: 750,
+                                    size: 14,
+                                    font: boldFont,
+                                });
+
+                                // Add the PDF page
+                                pdfPage.drawPage(firstPage, {
+                                    x: 50,
+                                    y: 50,
+                                    width: 500,
+                                    height: 650,
+                                });
+
+                                // Continue with the original page
+                                currentPage = pdfDoc.addPage([600, 800]);
+                                yPos = 750;
+                            } catch (pdfError) {
+                                console.error('Error embedding PDF:', pdfError);
+                                addText(`${receipt.name} (PDF could not be embedded)`, margin + 20, yPos, 10);
+                                yPos -= smallLineHeight;
+                            }
+                        } else {
+                            addText(`${receipt.name} (${receipt.fileType || 'Unknown type'})`, margin + 20, yPos, 10);
+                            yPos -= smallLineHeight;
+                        }
+                    } catch (receiptError) {
+                        console.error('Error processing receipt:', receiptError);
+                        addText(`${receipt.name} (Error processing receipt)`, margin + 20, yPos, 10);
+                        yPos -= smallLineHeight;
+                    }
+                }
+            }
+
+            // Add separator between transactions (except for the last one)
+            if (i < formData.transactions.length - 1) {
+                yPos -= lineHeight;
+
+                // Draw a line
+                currentPage.drawLine({
+                    start: { x: margin, y: yPos + 5 },
+                    end: { x: 550, y: yPos + 5 },
+                    thickness: 1,
+                    color: rgb(0.8, 0.8, 0.8),
+                });
+
+                yPos -= lineHeight;
+            }
+        }
+
+        // Serialize the PDF to bytes
+        const pdfBytes = await pdfDoc.save();
+        console.log("PDF generated successfully, buffer size:", pdfBytes.length);
+
+        return pdfBytes;
+    } catch (error) {
+        console.error('Error generating PDF:', error);
+        if (error instanceof Error) {
+            console.error('Error details:', error.message);
+            console.error('Error stack:', error.stack);
+        }
+        throw error;
+    }
 }

@@ -138,7 +138,18 @@ export default function EditFormPage() {
     };
 
     async function onSubmit(data: FormValues) {
+        // Add debug log to track when onSubmit is called
+        console.log("onSubmit called - form submission initiated");
+
         try {
+            // Only proceed with submission if actually in edit mode
+            if (!isEditing) {
+                console.log("Form submission attempted while not in edit mode - ignoring");
+                return;
+            }
+
+            console.log("Processing form submission data...");
+
             const formDataWithBase64 = {
                 ...data,
                 deletedTransactionIds: [...deletedTransactions],
@@ -170,6 +181,7 @@ export default function EditFormPage() {
             });
 
             if (result.success) {
+                console.log("Form updated successfully");
                 setDeletedTransactions([]);
                 setIsEditing(false);
                 reset({
@@ -223,12 +235,19 @@ export default function EditFormPage() {
                                 variant="outline"
                                 onClick={() => {
                                     setIsEditing(false);
-                                    reset();
+                                    // Reset form to original data
+                                    if (formData) {
+                                        reset(formData);
+                                    }
                                 }}
                             >
                                 Cancel
                             </Button>
-                            <Button type="submit" form="form">
+                            {/* Important: Use type="button" and call handleSubmit with onSubmit manually */}
+                            <Button
+                                type="button"
+                                onClick={() => handleSubmit(onSubmit)()}
+                            >
                                 Save Changes
                             </Button>
                         </>
@@ -244,7 +263,8 @@ export default function EditFormPage() {
             </div>
 
             <Form {...form}>
-                <form id="form" onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                {/* Prevent default form submission behavior by adding onSubmit that just prevents default */}
+                <form id="form" onSubmit={(e) => e.preventDefault()} className="space-y-6">
                     <FormField
                         control={control}
                         name="reimbursedName"
@@ -513,7 +533,11 @@ export default function EditFormPage() {
                                 >
                                     Add Transaction
                                 </Button>
-                                <Button type="submit">
+                                {/* Changed to type="button" and using handleSubmit directly */}
+                                <Button
+                                    type="button"
+                                    onClick={() => handleSubmit(onSubmit)()}
+                                >
                                     Save Changes
                                 </Button>
                             </>
@@ -523,4 +547,4 @@ export default function EditFormPage() {
             </Form>
         </div>
     );
-} 
+}

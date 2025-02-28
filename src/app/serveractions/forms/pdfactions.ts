@@ -20,7 +20,7 @@ export async function generateFormPdfAction(formId: number): Promise<{
             };
         }
 
-        // Generate PDF from form data
+        // Generate PDF from form data using pdf-lib
         const pdfBuffer = await generateFormPdf(formData);
 
         return {
