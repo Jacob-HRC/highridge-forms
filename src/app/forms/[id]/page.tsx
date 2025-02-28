@@ -31,6 +31,7 @@ import { cn } from "~/lib/utils";
 import { CalendarIcon, File } from "lucide-react";
 import { FormDescription } from "~/components/ui/form";
 import { updateFormWithFiles } from "~/app/serveractions/forms/reimburesementformactions";
+import FormPdfButton from "~/components/form-pdf-button";
 // Reuse the constants from the new form page
 const ACCOUNT_LINES = ["General Fund", "Missions", "Church Plant"];
 const DEPARTMENTS = ["Worship", "Youth", "Children", "Admin"];
@@ -87,6 +88,8 @@ export default function EditFormPage() {
                         submitterName: fetchedData.form.submitterName,
                         reimbursedName: fetchedData.form.reimbursedName,
                         reimbursedEmail: fetchedData.form.reimbursedEmail,
+                        createdAt: fetchedData.form.createdAt ? new Date(fetchedData.form.createdAt) : new Date(),
+                        updatedAt: fetchedData.form.updatedAt ? new Date(fetchedData.form.updatedAt) : new Date(),
                         transactions: fetchedData.transactions.map(tx => ({
                             id: tx.transactionId,
                             date: tx.date ? new Date(tx.date) : new Date(),
@@ -230,9 +233,12 @@ export default function EditFormPage() {
                             </Button>
                         </>
                     ) : (
-                        <Button type="button" onClick={() => setIsEditing(true)}>
-                            Edit Form
-                        </Button>
+                        <>
+                            <FormPdfButton formId={formId} formTitle={`Reimbursement-${formId}`} />
+                            <Button className="mt-4" type="button" onClick={() => setIsEditing(true)}>
+                                Edit Form
+                            </Button>
+                        </>
                     )}
                 </div>
             </div>

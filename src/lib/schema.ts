@@ -27,6 +27,8 @@ export const reimbursementFormSchema = z.object({
     submitterName: z.string().min(1, "Name is required"),
     reimbursedName: z.string().min(1, "Reimbursed name is required"),
     reimbursedEmail: z.string().email("Invalid email"),
+    createdAt: z.date(),
+    updatedAt: z.date(),
     transactions: z.array(transactionSchema).min(1, "At least one transaction is required"),
 });
 
