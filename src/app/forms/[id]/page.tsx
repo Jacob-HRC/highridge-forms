@@ -33,6 +33,7 @@ import { FormDescription } from "~/components/ui/form";
 import { updateFormWithFiles } from "~/app/serveractions/forms/reimburesementformactions";
 import FormPdfButton from "~/components/form-pdf-button";
 import { deleteReceipt } from "~/app/serveractions/forms/reimburesementformactions";
+import Receipts from "~/components/Receipts";
 // Reuse the constants from the new form page
 const ACCOUNT_LINES = ["General Fund", "Missions", "Church Plant"];
 const DEPARTMENTS = ["Worship", "Youth", "Children", "Admin"];
@@ -484,53 +485,15 @@ export default function EditFormPage() {
                                 )}
                             />
 
-                            <div className="mt-4">
-                                <FormLabel>Receipts</FormLabel>
-                                <div className="flex flex-wrap gap-4 justify-center">
-                                    {field.receipts?.map((receipt) => (
-                                        <div key={receipt.id} className="flex flex-col items-center border p-2 rounded">
-                                            <File className="h-12 w-12 text-gray-500" />
-                                            <span className="mt-2 text-sm text-center break-all">{receipt.name}</span>
-                                            {isEditing && (
-                                                <Button
-                                                    type="button"
-                                                    variant="destructive"
-                                                    size="sm"
-                                                    className="mt-2"
-                                                    onClick={() => handleDeleteReceipt(
-                                                        // Make sure we're using the correct transaction ID
-                                                        form.getValues(`transactions.${index}.id`) as number,
-                                                        receipt.id ?? 0
-                                                    )}
-                                                >
-                                                    Delete Receipt
-                                                </Button>
-                                            )}
-                                        </div>
-                                    ))}
-                                    {isEditing && (
-                                        <FormField
-                                            control={control}
-                                            name={`transactions.${index}.newFiles`}
-                                            render={({ field: fileField }) => (
-                                                <FormItem>
-                                                    <FormControl>
-                                                        <Input
-                                                            type="file"
-                                                            multiple
-                                                            accept="image/*,.pdf"
-                                                            onChange={(e) => {
-                                                                fileField.onChange(e.target.files);
-                                                            }}
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    )}
-                                </div>
-                            </div>
+                            <Receipts
+                                receipts={field.receipts}
+                                isEditing={isEditing}
+                                // Pass the transaction id (ensure you get it correctly from the form values)
+                                transactionId={form.getValues(`transactions.${index}.id`) as number}
+                                onDeleteReceipt={handleDeleteReceipt}
+                                control={control}
+                                fileFieldName={`transactions.${index}.newFiles`}
+                            />
 
                             {isEditing && (
                                 <div className="flex justify-end mt-4 pt-4 border-t">
