@@ -5,6 +5,7 @@ import { Button } from '~/components/ui/button';
 import { getForms } from '~/app/serveractions/forms/reimburesementformactions';
 import { deleteForm } from '~/app/serveractions/forms/deleteFormAction';
 import { useState, useEffect } from 'react';
+import FormPdfButton from '~/components/form-pdf-button';
 
 type Form = {
   id: number;
@@ -27,7 +28,13 @@ export default function FormsTable() {
   const loadForms = async () => {
     try {
       const formsData = await getForms();
-      setForms(formsData);
+      // Sort forms by updatedAt date in descending order
+      const sortedForms = formsData.sort((a, b) => {
+        const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+        const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+        return dateB - dateA;
+      });
+      setForms(sortedForms);
     } catch (e) {
       console.error('Forms fetch error:', e);
       setError(`Error fetching forms: ${e instanceof Error ? e.message : 'Unknown error'}`);
@@ -88,6 +95,7 @@ export default function FormsTable() {
                 >
                   <Link href={`/forms/${form.id}`}>View</Link>
                 </Button>
+                <FormPdfButton formId={form.id} formTitle={`reimbursement-form-${form.id}`} />
                 <Button
                   variant="destructive"
                   size="sm"
