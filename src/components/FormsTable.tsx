@@ -57,13 +57,13 @@ export default function FormsTable() {
   }
 
   return (
-    <table className="w-full border-collapse border border-gray-300">
-      <thead className="bg-gray-100">
+    <table className="w-full border-collapse bg-gray-800 text-gray-100">
+      <thead className="bg-gray-700">
         <tr>
-          <th className="border border-gray-300 p-2">Reimbursed</th>
-          <th className="border border-gray-300 p-2">Submitted By</th>
-          <th className="border border-gray-300 p-2">Created</th>
-          <th className="border border-gray-300 p-2">Actions</th>
+          <th className="border-b border-gray-600 p-3 text-left font-medium">Reimbursed</th>
+          <th className="border-b border-gray-600 p-3 text-left font-medium">Submitted By</th>
+          <th className="border-b border-gray-600 p-3 text-left font-medium">Created</th>
+          <th className="border-b border-gray-600 p-3 text-left font-medium">Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -80,12 +80,14 @@ export default function FormsTable() {
             </td>
             <td className="border border-gray-300 p-2">
               <div className="flex gap-2">
-                <Link
-                  href={`/forms/${form.id}`}
-                  className="text-blue-600 hover:underline"
+                <Button
+                  variant="primary"
+                  size="sm"
+                  asChild
+                  className="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700"
                 >
-                  View
-                </Link>
+                  <Link href={`/forms/${form.id}`}>View</Link>
+                </Button>
                 <Button
                   variant="destructive"
                   size="sm"
