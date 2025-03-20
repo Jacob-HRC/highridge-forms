@@ -70,7 +70,7 @@ export default function FormPdfButton({ formId, formTitle = "form" }: FormPdfBut
                 className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700"
             >
                 <FileText className="h-4 w-4" />
-                {isGenerating ? "Generating..." : "Download PDF"}
+                {isGenerating ? "Generating..." : "Download"}
             </Button>
 
             {errorMessage && (

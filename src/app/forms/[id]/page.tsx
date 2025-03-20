@@ -34,6 +34,7 @@ import { updateFormWithFiles } from "~/app/serveractions/forms/reimburesementfor
 import FormPdfButton from "~/components/form-pdf-button";
 import { deleteReceipt } from "~/app/serveractions/forms/reimburesementformactions";
 import Receipts from "~/components/Receipts";
+import { TransactionForm } from "~/components/TransactionForm";
 // Reuse the constants from the new form page
 const ACCOUNT_LINES = ["General Fund", "Missions", "Church Plant"];
 const DEPARTMENTS = ["Worship", "Youth", "Children", "Admin"];
@@ -267,299 +268,102 @@ export default function EditFormPage() {
     if (error) return <div className="p-6 text-red-500">Error: {error}</div>;
 
     return (
-        <div className="container mx-auto p-6">
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold">
-                    {isEditing ? 'Edit Form' : 'View Form'}
-                </h1>
-                <div className="space-x-2">
-                    {isEditing ? (
-                        <>
+        <div className="min-h-screen bg-gray-900 text-gray-100">
+            <div className="container mx-auto p-6">
+                <div className="bg-gray-800 rounded-lg shadow-xl p-6 mb-8">
+                    {loading ? (
+                        <div className="text-center py-4">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+                        </div>
+                    ) : error ? (
+                        <div className="text-red-400 p-4 bg-red-900/20 rounded-lg border border-red-700">{error}</div>
+                    ) : (
+                        <Form {...form}>
+                            <div className="space-y-6">
+                                <div className="flex justify-between items-center mb-6">
+                                    <h1 className="text-2xl font-bold text-gray-100">View Form</h1>
+                                    <div className="flex gap-4">
+                                        <FormPdfButton formId={formId} />
+                                        <Button
+                                            type="button"
+                                            onClick={() => setIsEditing(!isEditing)}
+                                            className="bg-blue-600 hover:bg-blue-700 text-white"
+                                        >
+                                            {isEditing ? "Cancel Edit" : "Edit Form"}
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                    {/* Prevent default form submission behavior by adding onSubmit that just prevents default */}
+                    <form id="form" onSubmit={(e) => e.preventDefault()} className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                          <FormField
+                            control={control}
+                            name="reimbursedName"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-gray-100">Reimbursed Name</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    className="bg-gray-700 border-gray-600 text-gray-100 hover:border-gray-500 focus:border-gray-400"
+                                    {...field}
+                                    disabled={!isEditing}
+                                  />
+                                </FormControl>
+                                <FormMessage className="text-red-400" />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={control}
+                            name="reimbursedEmail"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-gray-100">Reimbursed Email</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    className="bg-gray-700 border-gray-600 text-gray-100 hover:border-gray-500 focus:border-gray-400"
+                                    type="email"
+                                    {...field}
+                                    disabled={!isEditing}
+                                  />
+                                </FormControl>
+                                <FormMessage className="text-red-400" />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                        <hr className="my-6" />
+                        
+                        <TransactionForm
+                            form={form}
+                            isEditing={isEditing}
+                            onRemoveTransaction={handleRemoveTransaction}
+                            onDeleteReceipt={handleDeleteReceipt}
+                        />
+                        <div className="flex justify-between mt-6">
                             <Button
                                 type="button"
                                 variant="outline"
-                                onClick={() => {
-                                    setIsEditing(false);
-                                    // Reset form to original data
-                                    if (formData) {
-                                        reset(formData);
-                                    }
-                                }}
+                                onClick={() => router.push('/dashboard')}
                             >
-                                Cancel
+                                Back to Dashboard
                             </Button>
-                            {/* Important: Use type="button" and call handleSubmit with onSubmit manually */}
-                            <Button
-                                type="button"
-                                onClick={() => handleSubmit(onSubmit)()}
-                            >
-                                Save Changes
-                            </Button>
-                        </>
-                    ) : (
-                        <>
-                            <FormPdfButton formId={formId} formTitle={`Reimbursement-${formId}`} />
-                            <Button className="mt-4" type="button" onClick={() => setIsEditing(true)}>
-                                Edit Form
-                            </Button>
-                        </>
-                    )}
-                </div>
-            </div>
-
-            <Form {...form}>
-                {/* Prevent default form submission behavior by adding onSubmit that just prevents default */}
-                <form id="form" onSubmit={(e) => e.preventDefault()} className="space-y-6">
-                    <FormField
-                        control={control}
-                        name="reimbursedName"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Reimbursed Name</FormLabel>
-                                <FormControl>
-                                    <Input {...field} readOnly={!isEditing} />
-                                </FormControl>
-                            </FormItem>
-                        )}
-                    />
-
-                    <FormField
-                        control={control}
-                        name="reimbursedEmail"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Reimbursed Email</FormLabel>
-                                <FormControl>
-                                    <Input {...field} type="email" readOnly={!isEditing} />
-                                </FormControl>
-                            </FormItem>
-                        )}
-                    />
-
-                    <hr className="my-6" />
-
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-semibold">Transactions</h2>
-                        {isEditing && (
-                            <Button
-                                type="button"
-                                onClick={() => {
-                                    append({
-                                        date: new Date(),
-                                        createdAt: new Date(),
-                                        updatedAt: new Date(),
-                                        accountLine: ACCOUNT_LINES[0]!,
-                                        department: DEPARTMENTS[0]!,
-                                        placeVendor: '',
-                                        description: '',
-                                        amount: 0,
-                                        receipts: [],
-                                    })
-                                }}
-                            >
-                                Add Transaction
-                            </Button>
-                        )}
-                    </div>
-
-                    {fields.map((field, index) => (
-                        <div key={field.id} className="border rounded p-4 mb-6 space-y-4">
-
-                            {/* Date */}
-                            <FormField
-                                control={form.control}
-                                name={`transactions.${index}.date`}
-                                render={({ field }) => (
-                                    <FormItem className="flex flex-col">
-                                        <FormLabel>Date of Transaction</FormLabel>
-                                        <Popover>
-                                            <PopoverTrigger asChild>
-                                                <FormControl>
-                                                    <Button
-                                                        variant={"outline"}
-                                                        className={cn(
-                                                            "w-[240px] pl-3 text-left font-normal",
-                                                            !field.value && "text-muted-foreground"
-                                                        )}
-                                                    >
-                                                        {field.value ? (
-                                                            format(field.value, "PPP")
-                                                        ) : (
-                                                            <span>Pick a date</span>
-                                                        )}
-                                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                                    </Button>
-                                                </FormControl>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-auto p-0" align="start">
-                                                <Calendar
-                                                    mode="single"
-                                                    selected={field.value}
-                                                    onSelect={field.onChange}
-                                                    disabled={(date) =>
-                                                        date > new Date() || date < new Date("1900-01-01")
-                                                    }
-                                                    initialFocus
-                                                />
-                                            </PopoverContent>
-                                        </Popover>
-                                        <FormDescription>
-
-                                        </FormDescription>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <FormField
-                                control={control}
-                                name={`transactions.${index}.accountLine`}
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Account Line</FormLabel>
-                                        <FormControl>
-                                            {isEditing ? (
-                                                <Select
-                                                    value={field.value}
-                                                    onValueChange={field.onChange}
-                                                >
-                                                    <SelectTrigger>
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {ACCOUNT_LINES.map((line) => (
-                                                            <SelectItem key={line} value={line}>
-                                                                {line}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            ) : (
-                                                <Input {...field} readOnly />
-                                            )}
-                                        </FormControl>
-                                    </FormItem>
-                                )}
-                            />
-
-                            <FormField
-                                control={control}
-                                name={`transactions.${index}.department`}
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Department</FormLabel>
-                                        <FormControl>
-                                            <Input {...field} readOnly={!isEditing} />
-                                        </FormControl>
-                                    </FormItem>
-                                )}
-                            />
-
-                            <FormField
-                                control={control}
-                                name={`transactions.${index}.placeVendor`}
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Place/Vendor</FormLabel>
-                                        <FormControl>
-                                            <Input {...field} readOnly={!isEditing} />
-                                        </FormControl>
-                                    </FormItem>
-                                )}
-                            />
-
-                            <FormField
-                                control={control}
-                                name={`transactions.${index}.description`}
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Description</FormLabel>
-                                        <FormControl>
-                                            <Textarea {...field} readOnly={!isEditing} />
-                                        </FormControl>
-                                    </FormItem>
-                                )}
-                            />
-
-                            <FormField
-                                control={control}
-                                name={`transactions.${index}.amount`}
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Amount (USD)</FormLabel>
-                                        <FormControl>
-                                            <Input {...field} type="number" readOnly={!isEditing} />
-                                        </FormControl>
-                                    </FormItem>
-                                )}
-                            />
-
-                            <Receipts
-                                receipts={field.receipts}
-                                isEditing={isEditing}
-                                // Pass the transaction id (ensure you get it correctly from the form values)
-                                transactionId={form.getValues(`transactions.${index}.id`) as number}
-                                onDeleteReceipt={handleDeleteReceipt}
-                                control={control}
-                                fileFieldName={`transactions.${index}.newFiles`}
-                            />
-
                             {isEditing && (
-                                <div className="flex justify-end mt-4 pt-4 border-t">
-                                    <Button
-                                        type="button"
-                                        variant="destructive"
-                                        size="sm"
-                                        onClick={() => handleRemoveTransaction(index)}
-                                    >
-                                        Delete Transaction
-                                    </Button>
+                                <div className="mt-8 border-t border-gray-700 pt-6">
+                                <Button
+                                  type="submit"
+                                  className="bg-blue-600 hover:bg-blue-700 text-white w-full md:w-auto"
+                                >
+                                  Save Changes
+                                </Button>
                                 </div>
                             )}
                         </div>
-                    ))}
-                    <div className="flex justify-between mt-6">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => router.push('/dashboard')}
-                        >
-                            Back to Dashboard
-                        </Button>
-                        {isEditing && (
-                            <>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={() => {
-                                        append({
-                                            date: new Date(),
-                                            createdAt: new Date(),
-                                            updatedAt: new Date(),
-                                            accountLine: ACCOUNT_LINES[0]!,
-                                            department: DEPARTMENTS[0]!,
-                                            placeVendor: '',
-                                            description: '',
-                                            amount: 0,
-                                            receipts: [],
-                                            newFiles: [],
-                                        })
-                                    }}
-                                >
-                                    Add Transaction
-                                </Button>
-                                {/* Changed to type="button" and using handleSubmit directly */}
-                                <Button
-                                    type="button"
-                                    onClick={() => handleSubmit(onSubmit)()}
-                                >
-                                    Save Changes
-                                </Button>
-                            </>
-                        )}
-                    </div>
-                </form>
-            </Form>
+                    </form>
+                </Form>)}
+            </div>
+            </div>
         </div>
     );
 }
