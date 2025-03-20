@@ -111,8 +111,8 @@ export default function NewFormPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-4">
+    <div className="max-w-3xl mx-auto p-6 bg-gray-800 rounded-lg shadow-lg">
+      <h1 className="text-2xl font-bold mb-4 text-gray-100">
         New {formType} Form
       </h1>
       <Form {...form}>
@@ -126,14 +126,15 @@ export default function NewFormPage() {
             name="reimbursedName"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Reimbursed Name</FormLabel>
+                <FormLabel className="text-gray-100">Reimbursed Name</FormLabel>
                 <FormControl>
                   <Input
                     placeholder="Reimbursed Name"
+                    className="bg-gray-700 border-gray-600 text-gray-100 hover:border-gray-500 focus:border-gray-400"
                     {...field}
                   />
                 </FormControl>
-                <FormMessage />
+                <FormMessage className="text-red-400" />
               </FormItem>
             )}
           />
@@ -142,24 +143,25 @@ export default function NewFormPage() {
             name="reimbursedEmail"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Reimbursed Email</FormLabel>
+                <FormLabel className="text-gray-100">Reimbursed Email</FormLabel>
                 <FormControl>
                   <Input
                     placeholder="Reimbursed Email"
                     type="email"
+                    className="bg-gray-700 border-gray-600 text-gray-100 hover:border-gray-500 focus:border-gray-400"
                     {...field}
                   />
                 </FormControl>
-                <FormMessage />
+                <FormMessage className="text-red-400" />
               </FormItem>
             )}
           />
 
-          <hr className="my-6" />
+          <hr className="border-gray-600" />
 
           <TransactionForm form={form} />
 
-          <Button type="submit">Submit Form</Button>
+          <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">Submit Form</Button>
         </form>
       </Form>
     </div>

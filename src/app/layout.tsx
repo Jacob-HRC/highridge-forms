@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 
 function Header() {
   return (
-    <header className="flex justify-between items-center p-4 bg-zinc-800 text-white">
+    <header className="flex justify-between items-center p-4 bg-gray-800/95 text-white border-b border-gray-700">
       <SignedIn>
         <Link href="/dashboard">
           <h1 className="text-2xl font-bold cursor-pointer">HighRidge Forms</h1>
@@ -40,7 +40,7 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en" className={GeistSans.variable}>
-        <body className="min-h-screen bg-background font-sans antialiased">
+        <body className="min-h-screen bg-gray-900 font-sans antialiased text-white">
           <Header />
           {children}
         </body>

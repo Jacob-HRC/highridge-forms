@@ -35,12 +35,13 @@ export function TransactionForm({
   });
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Transactions</h2>
+    <div className="space-y-8">
+      <div className="flex justify-between items-center pb-4 border-b border-gray-700">
+        <h2 className="text-2xl font-semibold tracking-tight text-gray-100">Transactions</h2>
         {isEditing && (
           <Button
             type="button"
+            className="bg-blue-600 hover:bg-blue-700 text-white"
             onClick={() =>
               append({
                 date: new Date(),
@@ -64,153 +65,163 @@ export function TransactionForm({
       {fields.map((fieldItem, index) => (
         <div
           key={fieldItem.id}
-          className="border rounded p-4 mb-6 space-y-4"
+          className="relative bg-gray-800 text-gray-100 rounded-lg border border-gray-600 shadow-lg p-6 mb-8 space-y-6 hover:border-gray-500 transition-colors"
         >
-          <FormField
-            control={control}
-            name={`transactions.${index}.date`}
-            render={({ field }) => (
-              <FormItem className="flex flex-col">
-                <FormLabel>Date of Transaction</FormLabel>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-[240px] pl-3 text-left font-normal",
-                          !field.value && "text-muted-foreground"
-                        )}
-                      >
-                        {field.value ? (
-                          format(field.value, "PPP")
-                        ) : (
-                          <span>Pick a date</span>
-                        )}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={field.value}
-                      onSelect={field.onChange}
-                      disabled={(date) =>
-                        date > new Date() || date < new Date("1900-01-01")
-                      }
-                      initialFocus
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormField
+              control={control}
+              name={`transactions.${index}.date`}
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel className="text-sm font-medium">Date of Transaction</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full pl-3 text-left font-normal bg-gray-700 border-gray-600 hover:bg-blue-600/50 hover:border-blue-500",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          {field.value ? (
+                            format(field.value, "PPP")
+                          ) : (
+                            <span>Pick a date</span>
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={field.value}
+                        onSelect={field.onChange}
+                        disabled={(date) =>
+                          date > new Date() || date < new Date("1900-01-01")
+                        }
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={control}
+              name={`transactions.${index}.amount`}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm font-medium">Amount</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      className="text-right bg-gray-700 border-gray-600 hover:border-gray-500 focus:border-gray-400 text-gray-100"
+                      {...field}
+                      onChange={(e) => field.onChange(parseFloat(e.target.value))}
                     />
-                  </PopoverContent>
-                </Popover>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
 
-          <FormField
-            control={control}
-            name={`transactions.${index}.accountLine`}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Account Line</FormLabel>
-                <FormControl>
-                  <Select
-                    value={field.value}
-                    onValueChange={field.onChange}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select account line" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ACCOUNT_LINES.map((acct) => (
-                        <SelectItem key={acct} value={acct}>
-                          {acct}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormField
+              control={control}
+              name={`transactions.${index}.accountLine`}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm font-medium">Account Line</FormLabel>
+                  <FormControl>
+                    <Select
+                      value={field.value}
+                      onValueChange={field.onChange}
+                    >
+                      <SelectTrigger className="w-full bg-gray-800 border-gray-700 hover:border-blue-500 hover:bg-blue-600/20 text-gray-100">
+                        <SelectValue placeholder="Select account line" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-gray-800 border-gray-700">
+                        {ACCOUNT_LINES.map((acct) => (
+                          <SelectItem key={acct} value={acct} className="text-gray-100 hover:bg-blue-600/50">
+                            {acct}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <FormField
-            control={control}
-            name={`transactions.${index}.department`}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Department</FormLabel>
-                <FormControl>
-                  <Select
-                    value={field.value}
-                    onValueChange={field.onChange}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select department" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {DEPARTMENTS.map((dept) => (
-                        <SelectItem key={dept} value={dept}>
-                          {dept}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+            <FormField
+              control={control}
+              name={`transactions.${index}.department`}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm font-medium">Department</FormLabel>
+                  <FormControl>
+                    <Select
+                      value={field.value}
+                      onValueChange={field.onChange}
+                    >
+                      <SelectTrigger className="w-full bg-gray-800 border-gray-700 hover:border-gray-600 text-gray-100">
+                        <SelectValue placeholder="Select department" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-gray-800 border-gray-700">
+                        {DEPARTMENTS.map((dept) => (
+                          <SelectItem key={dept} value={dept} className="text-gray-100 hover:bg-gray-700">
+                            {dept}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
 
-          <FormField
-            control={control}
-            name={`transactions.${index}.placeVendor`}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Place/Vendor</FormLabel>
-                <FormControl>
-                  <Input {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormField
+              control={control}
+              name={`transactions.${index}.placeVendor`}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm font-medium">Place/Vendor</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <FormField
-            control={control}
-            name={`transactions.${index}.description`}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Description</FormLabel>
-                <FormControl>
-                  <Input {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={control}
-            name={`transactions.${index}.amount`}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Amount</FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    {...field}
-                    onChange={(e) => field.onChange(parseFloat(e.target.value))}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+            <FormField
+              control={control}
+              name={`transactions.${index}.description`}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm font-medium text-gray-100">Description</FormLabel>
+                  <FormControl>
+                    <Input
+                      className="bg-gray-800 border-gray-700 hover:border-gray-600 focus:border-gray-500 text-gray-100"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
 
           <Receipts
             receipts={fieldItem.receipts}
@@ -224,10 +235,11 @@ export function TransactionForm({
           {isEditing && onRemoveTransaction && (
             <Button
               type="button"
-              variant="destructive"
+              variant="outline"
+              className="absolute top-4 right-4 text-destructive hover:text-white hover:bg-blue-600/90 transition-colors"
               onClick={() => onRemoveTransaction(index)}
             >
-              Remove Transaction
+              Remove
             </Button>
           )}
         </div>

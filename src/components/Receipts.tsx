@@ -34,8 +34,8 @@ export default function Receipts({
             <FormLabel>Receipts</FormLabel>
             <div className="flex flex-wrap gap-4 justify-center">
                 {receipts.map((receipt) => (
-                    <div key={receipt.id} className="flex flex-col items-center border p-2 rounded">
-                        <File className="h-12 w-12 text-gray-500" />
+                    <div key={receipt.id} className="flex flex-col items-center border border-border/40 hover:border-border/80 bg-card text-card-foreground p-2 rounded transition-colors">
+                        <File className="h-12 w-12 text-muted-foreground" />
                         <span className="mt-2 text-sm text-center break-all">{receipt.name}</span>
                         {isEditing && (
                             <Button
