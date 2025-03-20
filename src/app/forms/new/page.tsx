@@ -18,6 +18,7 @@ import {
 import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
 import { TransactionForm } from "~/components/TransactionForm";
+import { ACCOUNT_LINES, DEPARTMENTS } from "~/lib/constants";
 
 
 import { reimbursementFormSchema, type FormValues } from "~/lib/schema";
@@ -49,6 +50,20 @@ export default function NewFormPage() {
       submitterName: submitterName,
       reimbursedName: "",
       reimbursedEmail: "",
+      transactions: [
+        {
+          date: new Date(),
+          accountLine: ACCOUNT_LINES[0] ?? "",
+          department: DEPARTMENTS[0] ?? "",
+          placeVendor: "",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          description: "",
+          amount: 1,
+          receipts: [],
+          newFiles: []
+        }
+      ]
     },
   });
 
@@ -113,7 +128,7 @@ export default function NewFormPage() {
   return (
     <div className="max-w-3xl mx-auto p-6 bg-gray-800 rounded-lg shadow-lg">
       <h1 className="text-2xl font-bold mb-4 text-gray-100">
-        New {formType} Form
+        New {formType.charAt(0).toUpperCase() + formType.slice(1).toLowerCase()} Form
       </h1>
       <Form {...form}>
         <form
