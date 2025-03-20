@@ -26,12 +26,12 @@ export async function deleteReceipt({
         }
 
         // Get the transaction ID for this receipt to validate form ownership
-        const transactionId = receiptResult[0].transactionId;
+        const transactionId = receiptResult[0]?.transactionId;
 
         // Verify the transaction belongs to the form
         const transactionResult = await db.select()
             .from(transactions)
-            .where(eq(transactions.id, transactionId));
+            .where(eq(transactions.id, transactionId ?? 0));
 
         if (!transactionResult || transactionResult.length === 0) {
             console.error(`Transaction with ID ${transactionId} not found.`);
@@ -39,7 +39,7 @@ export async function deleteReceipt({
         }
 
         // Verify the transaction belongs to the specified form
-        if (transactionResult[0].formId !== formId) {
+        if (transactionResult[0]?.formId !== formId) {
             console.error(`Transaction ${transactionId} does not belong to form ${formId}.`);
             return { success: false, error: 'Unauthorized access' };
         }

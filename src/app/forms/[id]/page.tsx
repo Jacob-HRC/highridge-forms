@@ -99,16 +99,25 @@ export default function EditFormPage() {
                         createdAt: fetchedData.form.createdAt ? new Date(fetchedData.form.createdAt) : new Date(),
                         updatedAt: fetchedData.form.updatedAt ? new Date(fetchedData.form.updatedAt) : new Date(),
                         transactions: fetchedData.transactions.map(tx => ({
-                            id: tx.transactionId,
-                            date: tx.date ? new Date(tx.date) : new Date(),
+                            ...tx,
                             createdAt: tx.createdAt ? new Date(tx.createdAt) : new Date(),
                             updatedAt: tx.updatedAt ? new Date(tx.updatedAt) : new Date(),
+                            receipts: tx.receipts?.map(receipt => ({
+                                id: receipt.id,
+                                createdAt: receipt.createdAt ? new Date(receipt.createdAt) : new Date(),
+                                updatedAt: receipt.updatedAt ? new Date(receipt.updatedAt) : new Date(),
+                                name: receipt.name,
+                                fileType: receipt.fileType,
+                                base64Content: receipt.base64Content
+                            })) || [],
+                            id: tx.transactionId,
+                            date: tx.date ? new Date(tx.date) : new Date(),
+// Removed duplicate createdAt property since it was already set above
                             accountLine: tx.accountLine,
                             department: tx.department,
                             placeVendor: tx.placeVendor,
                             description: tx.description || "",
                             amount: tx.amount,
-                            receipts: tx.receipts || [],
                             newFiles: [],
                         })),
                     };
