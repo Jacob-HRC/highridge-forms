@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const receiptSchema = z.object({
-    id: z.number().optional(),
+    id: z.number(),
     name: z.string(),
     fileType: z.string(),
     base64Content: z.string(),
@@ -24,7 +24,7 @@ export const transactionSchema = z.object({
 });
 
 export const reimbursementFormSchema = z.object({
-    id: z.number().optional(),
+    id: z.number(),
     userId: z.string(),
     formType: z.string(),
     submitterEmail: z.string().email("Invalid email"),

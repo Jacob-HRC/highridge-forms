@@ -113,7 +113,7 @@ export default function EditFormPage() {
                             })) || [],
                             id: tx.transactionId,
                             date: tx.date ? new Date(tx.date) : new Date(),
-// Removed duplicate createdAt property since it was already set above
+                            // Removed duplicate createdAt property since it was already set above
                             accountLine: tx.accountLine,
                             department: tx.department,
                             placeVendor: tx.placeVendor,
@@ -206,8 +206,19 @@ export default function EditFormPage() {
                 setIsEditing(false);
                 reset({
                     ...result.form,
-                    transactions: result.transactions,
-                });
+                    transactions: (result.transactions ?? []).map(tx => ({
+                        ...tx,
+                        createdAt: tx.createdAt ? new Date(tx.createdAt) : undefined,
+                        updatedAt: tx.updatedAt ? new Date(tx.updatedAt) : undefined,
+                        date: tx.date ? new Date(tx.date) : new Date(),
+                        receipts: tx.receipts?.map(receipt => ({
+                            ...receipt,
+                            createdAt: receipt.createdAt ? new Date(receipt.createdAt) : undefined,
+                            updatedAt: receipt.updatedAt ? new Date(receipt.updatedAt) : undefined,
+                        })) ?? [],
+                        newFiles: [],
+                    })),
+                } as FormValues);
             } else {
                 throw new Error(result.error || 'Failed to update form');
             }
@@ -244,16 +255,31 @@ export default function EditFormPage() {
                     transactions: updatedFormData.transactions.map(tx => ({
                         id: tx.transactionId,
                         date: tx.date ? new Date(tx.date) : new Date(),
+                        createdAt: tx.createdAt ?? undefined,
+                        updatedAt: tx.updatedAt ?? undefined,
                         accountLine: tx.accountLine,
                         department: tx.department,
                         placeVendor: tx.placeVendor,
                         description: tx.description || "",
                         amount: tx.amount,
-                        receipts: tx.receipts || [],
+                        receipts: tx.receipts?.map(receipt => ({
+                            ...receipt,
+                            createdAt: receipt.createdAt ?? undefined,
+                            updatedAt: receipt.updatedAt ?? undefined,
+                        })) ?? [],
                         newFiles: [],
                     })),
                 };
-                reset(refreshedFormData);
+                reset({
+                    ...refreshedFormData,
+                    createdAt: refreshedFormData.createdAt ?? new Date(),
+                    updatedAt: refreshedFormData.updatedAt ?? new Date(),
+                    transactions: refreshedFormData.transactions.map(tx => ({
+                        ...tx,
+                        createdAt: tx.createdAt ?? new Date(),
+                        updatedAt: tx.updatedAt ?? new Date()
+                    }))
+                } as FormValues);
             }
 
             // Show success message
@@ -294,75 +320,76 @@ export default function EditFormPage() {
                                     </div>
                                 </div>
                             </div>
-                    {/* Prevent default form submission behavior by adding onSubmit that just prevents default */}
-                    <form id="form" onSubmit={(e) => e.preventDefault()} className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                          <FormField
-                            control={control}
-                            name="reimbursedName"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-gray-100">Reimbursed Name</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    className="bg-gray-700 border-gray-600 text-gray-100 hover:border-gray-500 focus:border-gray-400"
-                                    {...field}
-                                    disabled={!isEditing}
-                                  />
-                                </FormControl>
-                                <FormMessage className="text-red-400" />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={control}
-                            name="reimbursedEmail"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-gray-100">Reimbursed Email</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    className="bg-gray-700 border-gray-600 text-gray-100 hover:border-gray-500 focus:border-gray-400"
-                                    type="email"
-                                    {...field}
-                                    disabled={!isEditing}
-                                  />
-                                </FormControl>
-                                <FormMessage className="text-red-400" />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-                        <hr className="my-6" />
-                        
-                        <TransactionForm
-                            form={form}
-                            isEditing={isEditing}
-                            onRemoveTransaction={handleRemoveTransaction}
-                            onDeleteReceipt={handleDeleteReceipt}
-                        />
-                        <div className="flex justify-between mt-6">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => router.push('/dashboard')}
-                            >
-                                Back to Dashboard
-                            </Button>
-                            {isEditing && (
-                                <div className="mt-8 border-t border-gray-700 pt-6">
-                                <Button
-                                  type="submit"
-                                  className="bg-blue-600 hover:bg-blue-700 text-white w-full md:w-auto"
-                                >
-                                  Save Changes
-                                </Button>
+                            {/* Prevent default form submission behavior by adding onSubmit that just prevents default */}
+                            <form id="form" onSubmit={(e) => e.preventDefault()} className="space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                                    <FormField
+                                        control={control}
+                                        name="reimbursedName"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="text-gray-100">Reimbursed Name</FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        className="bg-gray-700 border-gray-600 text-gray-100 hover:border-gray-500 focus:border-gray-400"
+                                                        {...field}
+                                                        disabled={!isEditing}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage className="text-red-400" />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={control}
+                                        name="reimbursedEmail"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="text-gray-100">Reimbursed Email</FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        className="bg-gray-700 border-gray-600 text-gray-100 hover:border-gray-500 focus:border-gray-400"
+                                                        type="email"
+                                                        {...field}
+                                                        disabled={!isEditing}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage className="text-red-400" />
+                                            </FormItem>
+                                        )}
+                                    />
                                 </div>
-                            )}
-                        </div>
-                    </form>
-                </Form>)}
-            </div>
+                                <hr className="my-6" />
+
+                                <TransactionForm
+                                    form={form}
+                                    isEditing={isEditing}
+                                    onRemoveTransaction={handleRemoveTransaction}
+                                    onDeleteReceipt={handleDeleteReceipt}
+                                    // If you pass transactions as props, ensure each tx.date is a Date object
+                                />
+                                <div className="flex justify-between mt-6">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => router.push('/dashboard')}
+                                    >
+                                        Back to Dashboard
+                                    </Button>
+                                    {isEditing && (
+                                        <div className="mt-8 border-t border-gray-700 pt-6">
+                                            <Button
+                                                type="submit"
+                                                className="bg-blue-600 hover:bg-blue-700 text-white w-full md:w-auto"
+                                            >
+                                                Save Changes
+                                            </Button>
+                                        </div>
+                                    )}
+                                </div>
+                            </form>
+                        </Form>)}
+                </div>
             </div>
         </div>
     );

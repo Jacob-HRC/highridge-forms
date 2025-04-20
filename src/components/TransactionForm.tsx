@@ -13,6 +13,7 @@ import { format } from 'date-fns';
 import { cn } from '~/lib/utils';
 import { ACCOUNT_LINES, DEPARTMENTS } from '~/lib/constants';
 import Receipts from './Receipts';
+import { Receipt } from './Receipts';
 
 interface TransactionFormProps {
   form: UseFormReturn<FormValues>;
@@ -224,12 +225,18 @@ export function TransactionForm({
           </div>
 
           <Receipts
-            receipts={fieldItem.receipts}
+            receipts={fieldItem.receipts?.filter((receipt): receipt is { id: number; name: string; fileType: string; base64Content: string; createdAt: Date; updatedAt: Date; } => receipt.id !== undefined &&
+              receipt.id !== undefined &&
+              'createdAt' in receipt &&
+              'updatedAt' in receipt &&
+              'fileType' in receipt &&
+              'base64Content' in receipt
+            ) ?? []}
             transactionId={fieldItem.id}
             control={control}
             fileFieldName={`transactions.${index}.newFiles`}
             isEditing={isEditing}
-            onDeleteReceipt={onDeleteReceipt}
+            onDeleteReceipt={(transactionId, receiptId) => onDeleteReceipt?.(transactionId, receiptId)}
           />
 
           {isEditing && onRemoveTransaction && (

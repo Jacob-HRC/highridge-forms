@@ -7,7 +7,7 @@ import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
 import { File } from "lucide-react";
 
-interface Receipt {
+export interface Receipt {
     id: number;
     name: string;
 }
@@ -22,13 +22,13 @@ interface ReceiptsProps {
 }
 
 export default function Receipts({
-                                     receipts = [],
-                                     isEditing,
-                                     transactionId,
-                                     onDeleteReceipt,
-                                     control,
-                                     fileFieldName,
-                                 }: ReceiptsProps) {
+    receipts = [],
+    isEditing,
+    transactionId,
+    onDeleteReceipt,
+    control,
+    fileFieldName,
+}: ReceiptsProps) {
     return (
         <div className="mt-4">
             <FormLabel>Receipts</FormLabel>

@@ -227,7 +227,7 @@ export async function generateFormPdf(formData: any): Promise<Uint8Array> {
                                 });
 
                                 // Add the PDF page
-                                pdfPage.drawPage(firstPage, {
+                                if (firstPage) pdfPage.drawPage(firstPage, {
                                     x: 50,
                                     y: 50,
                                     width: 500,

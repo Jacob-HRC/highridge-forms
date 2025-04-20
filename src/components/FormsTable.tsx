@@ -88,7 +88,7 @@ export default function FormsTable() {
             <td className="border border-gray-300 p-2">
               <div className="flex gap-2">
                 <Button
-                  variant="primary"
+                  variant="default"
                   size="sm"
                   asChild
                   className="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700"

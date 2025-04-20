@@ -83,9 +83,11 @@ export default function NewFormPage() {
         transactions: await Promise.all(
           data.transactions.map(async (tx) => {
             if (!tx.newFiles?.length) return tx;
-            
+
             const base64Files = await Promise.all(
-              Array.from(tx.newFiles as FileList).map(async (file) => ({
+              Array.from(tx.newFiles as FileList).map(async (file, index) => ({
+                // Add a temporary negative ID for new receipts
+                id: -(Date.now() + index), // Use negative IDs to indicate these are new receipts
                 name: file.name,
                 fileType: file.type,
                 base64Content: await fileToBase64(file),

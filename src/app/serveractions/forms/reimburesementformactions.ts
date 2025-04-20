@@ -236,16 +236,22 @@ export async function updateFormWithFiles({
         // --- 3. Update/Insert transactions and process new receipts ---
         if (submittedTransactions && submittedTransactions.length > 0) {
             for (const tx of submittedTransactions) {
-                // Add debug logging to see what's in each transaction
-                console.log('Processing transaction:', tx);
-                console.log('Transaction ID type:', typeof tx.id);
-                console.log('Transaction ID value:', tx.id);
+                // Ensure all date fields are stored as UTC ISO strings
+                const normalizeDate = (d: any) =>
+                    d instanceof Date ? d.toISOString() : typeof d === "string" ? d : undefined;
+
+                // Prepare transaction data with normalized dates
+                const txData = {
+                    ...tx,
+                    date: normalizeDate(tx.date),
+                    createdAt: normalizeDate(tx.createdAt),
+                    updatedAt: normalizeDate(tx.updatedAt),
+                };
 
                 // Check if this is an existing transaction (has a positive numeric ID)
                 if (tx.id && typeof tx.id === 'number' && tx.id > 0) {
                     // --- 3.1. Update existing transaction ---
-                    console.log(`Updating existing transaction with ID ${tx.id}`);
-                    const { receipts: existingReceipts, newFiles, ...txUpdateData } = tx;
+                    const { receipts: existingReceipts, newFiles, ...txUpdateData } = txData;
                     const updatedTransactionResult = await db.update(transactions)
                         .set({
                             ...txUpdateData,
