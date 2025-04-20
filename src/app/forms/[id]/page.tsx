@@ -13,42 +13,13 @@ import {
     FormMessage,
 } from "~/components/ui/form";
 import { Input } from "~/components/ui/input";
-import { Textarea } from "~/components/ui/textarea";
 import { Button } from "~/components/ui/button";
-import {
-    Select,
-    SelectTrigger,
-    SelectValue,
-    SelectContent,
-    SelectItem,
-} from "~/components/ui/select";
 import { getFormById } from '~/app/serveractions/forms/reimburesementformactions';
-import { FormValues, reimbursementFormSchema } from '~/lib/schema';
-import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover";
-import { Calendar } from "~/components/ui/calendar";
-import { format } from "date-fns";
-import { cn } from "~/lib/utils";
-import { CalendarIcon, File } from "lucide-react";
-import { FormDescription } from "~/components/ui/form";
-import { updateFormWithFiles } from "~/app/serveractions/forms/reimburesementformactions";
+import { FormValues } from '~/lib/schema';
 import FormPdfButton from "~/components/form-pdf-button";
 import { deleteReceipt } from "~/app/serveractions/forms/reimburesementformactions";
-import Receipts from "~/components/Receipts";
 import { TransactionForm } from "~/components/TransactionForm";
-// Reuse the constants from the new form page
-const ACCOUNT_LINES = ["General Fund", "Missions", "Church Plant"];
-const DEPARTMENTS = ["Worship", "Youth", "Children", "Admin"];
 
-async function fileToBase64(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-            resolve(reader.result as string);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
-}
 
 
 export default function EditFormPage() {
@@ -57,14 +28,12 @@ export default function EditFormPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isEditing, setIsEditing] = useState(false);
-    const [deletedTransactions, setDeletedTransactions] = useState<number[]>([]);
     const formId = Number(params.id); // Get the form ID from the URL params, assuming it's a number
-    const [formData, setFormData] = useState<FormValues | null>(null);
 
     const form = useForm<FormValues>();
-    const { control, reset, handleSubmit } = form;
+    const { control, reset } = form;
 
-    const { fields, append, remove } = useFieldArray({
+    const { fields, remove } = useFieldArray({
         control,
         name: "transactions",
     });
@@ -83,12 +52,7 @@ export default function EditFormPage() {
             try {
                 const fetchedData = await getFormById(formId);
                 if (fetchedData) {
-                    // Sort transactions by createdAt (oldest to newest)
-                    const sortedTransactions = [...fetchedData.transactions].sort((a, b) => {
-                        const createdAtA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-                        const createdAtB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-                        return createdAtA - createdAtB;
-                    });
+
                     const initialFormData: FormValues = {
                         id: fetchedData.form.id,
                         userId: fetchedData.form.userId,
@@ -122,7 +86,6 @@ export default function EditFormPage() {
                             newFiles: [],
                         })),
                     };
-                    setFormData(initialFormData);
                     reset(initialFormData);
                 } else {
                     setError(`Form with ID ${formId} not found.`);
@@ -139,11 +102,7 @@ export default function EditFormPage() {
 
     }, [formId, reset]); // Dependency array remains the same
 
-    useEffect(() => {
-        if (!isEditing) {
-            setDeletedTransactions([]);
-        }
-    }, [isEditing]);
+
 
     const handleRemoveTransaction = (index: number) => {
         const tx = fields[index] as FormValues['transactions'][number];
@@ -152,85 +111,11 @@ export default function EditFormPage() {
         const txId = Number(tx.id);
         if (!isNaN(txId) && txId > 0) {  // Make sure it's a valid positive number
             console.log('Adding to deletedTransactions:', txId);
-            setDeletedTransactions(prev => [...prev, txId]);
         }
         remove(index);
     };
 
-    async function onSubmit(data: FormValues) {
-        // Add debug log to track when onSubmit is called
-        console.log("onSubmit called - form submission initiated");
-
-        try {
-            // Only proceed with submission if actually in edit mode
-            if (!isEditing) {
-                console.log("Form submission attempted while not in edit mode - ignoring");
-                return;
-            }
-
-            console.log("Processing form submission data...");
-
-            const formDataWithBase64 = {
-                ...data,
-                deletedTransactionIds: [...deletedTransactions],
-                transactions: await Promise.all(
-                    data.transactions.map(async (tx) => {
-                        if (!tx.newFiles?.length) return tx;
-
-                        const base64Files = await Promise.all(
-                            Array.from(tx.newFiles as FileList).map(async (file: File) => ({
-                                name: file.name,
-                                type: file.type,
-                                base64Content: await fileToBase64(file),
-                            }))
-                        );
-
-                        return {
-                            ...tx,
-                            newFiles: base64Files
-                        };
-                    })
-                )
-            };
-
-            console.log('Final form data for server action:', formDataWithBase64);
-
-            const result = await updateFormWithFiles({ // Call the server action
-                id: formId,
-                form: formDataWithBase64,
-            });
-
-            if (result.success) {
-                console.log("Form updated successfully");
-                setDeletedTransactions([]);
-                setIsEditing(false);
-                reset({
-                    ...result.form,
-                    transactions: (result.transactions ?? []).map(tx => ({
-                        ...tx,
-                        createdAt: tx.createdAt ? new Date(tx.createdAt) : undefined,
-                        updatedAt: tx.updatedAt ? new Date(tx.updatedAt) : undefined,
-                        date: tx.date ? new Date(tx.date) : new Date(),
-                        receipts: tx.receipts?.map(receipt => ({
-                            ...receipt,
-                            createdAt: receipt.createdAt ? new Date(receipt.createdAt) : undefined,
-                            updatedAt: receipt.updatedAt ? new Date(receipt.updatedAt) : undefined,
-                        })) ?? [],
-                        newFiles: [],
-                    })),
-                } as FormValues);
-            } else {
-                throw new Error(result.error || 'Failed to update form');
-            }
-
-
-        } catch (e: any) { // Type 'e' as 'any' or 'Error'
-            console.error('Error updating form:', e);
-            alert(`Failed to update form: ${e.message}`); // Display error message to user
-        }
-    }
-
-    async function handleDeleteReceipt(transactionId: number, receiptId: number) {
+    async function handleDeleteReceipt(receiptId: number) {
         try {
             // Show confirmation dialog
             if (!confirm("Are you sure you want to delete this receipt?")) {
@@ -366,7 +251,7 @@ export default function EditFormPage() {
                                     isEditing={isEditing}
                                     onRemoveTransaction={handleRemoveTransaction}
                                     onDeleteReceipt={handleDeleteReceipt}
-                                    // If you pass transactions as props, ensure each tx.date is a Date object
+                                // If you pass transactions as props, ensure each tx.date is a Date object
                                 />
                                 <div className="flex justify-between mt-6">
                                     <Button
