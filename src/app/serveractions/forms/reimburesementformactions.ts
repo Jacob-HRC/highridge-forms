@@ -325,13 +325,19 @@ export async function updateFormWithFiles({
                     if (newFiles && newFiles.length > 0 && newTransactionId) {
                         console.log(`Inserting receipts for new transaction ${newTransactionId}:`, newFiles);
                         const receiptInsertResult = await db.insert(receipts).values(
-                            newFiles.map((file: any) => ({
+                            newFiles.map((file: {
+                                name: string;
+                                type: string;
+                                base64Content: string;
+                                createdAt: Date;
+                                updatedAt: Date;
+                            }) => ({
                                 transactionId: newTransactionId,
                                 name: file.name,
                                 fileType: file.type,
                                 base64Content: file.base64Content,
                                 createdAt: file.createdAt,
-                                updatedAt: file.updateAt
+                                updatedAt: file.updatedAt // Fixed typo: updateAt -> updatedAt
                             }))
                         );
                         console.log('Receipt insert result (for new transaction):', receiptInsertResult);
