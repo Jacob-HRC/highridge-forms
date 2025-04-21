@@ -199,12 +199,26 @@ export async function getFormById(formId: number) {
     }
 }
 
+// Add this interface for the update form data
+interface UpdateFormData extends Omit<FormValues, 'transactions'> {
+    transactions: Array<FormValues['transactions'][number] & {
+        newFiles?: Array<{
+            name: string;
+            type: string;
+            base64Content: string;
+            createdAt: Date;
+            updatedAt: Date;
+        }>;
+    }>;
+    deletedTransactionIds?: number[];
+}
+
 export async function updateFormWithFiles({
     id: formId,
     form: formDataWithBase64,
 }: {
     id: number;
-    form: any;
+    form: UpdateFormData; // Replace 'any' with our new interface
 }) {
     try {
         console.log('Server action: updating form with files', formId, formDataWithBase64);
@@ -236,7 +250,7 @@ export async function updateFormWithFiles({
         if (submittedTransactions && submittedTransactions.length > 0) {
             for (const tx of submittedTransactions) {
                 // Ensure all date fields are stored as UTC ISO strings
-                const normalizeDate = (d: any) =>
+                const normalizeDate = (d: Date | string | undefined) =>
                     d instanceof Date ? d.toISOString() : typeof d === "string" ? d : undefined;
 
                 // Prepare transaction data with normalized dates
@@ -254,6 +268,9 @@ export async function updateFormWithFiles({
                     const updatedTransactionResult = await db.update(transactions)
                         .set({
                             ...txUpdateData,
+                            date: new Date(txUpdateData.date ?? ''),
+                            createdAt: new Date(txUpdateData.createdAt ?? ''),
+                            updatedAt: new Date(txUpdateData.updatedAt ?? ''),
                             amount: parseFloat(String(txUpdateData.amount)),
                         })
                         .where(eq(transactions.id, tx.id));
@@ -263,14 +280,19 @@ export async function updateFormWithFiles({
                     if (newFiles && newFiles.length > 0) {
                         console.log(`Inserting new receipts for transaction ${tx.id}:`, newFiles);
                         const receiptInsertResult = await db.insert(receipts).values(
-                            newFiles.map((file: any) => ({
+                            newFiles.map((file: {
+                                name: string;
+                                type: string;
+                                base64Content: string;
+                                createdAt: Date;
+                                updatedAt: Date;
+                            }) => ({
                                 transactionId: tx.id,
                                 name: file.name,
                                 fileType: file.type,
                                 base64Content: file.base64Content,
                                 createdAt: file.createdAt,
-                                updatedAt: file.updateAt
-
+                                updatedAt: file.updatedAt
                             }))
                         );
                         console.log('Receipt insert result:', receiptInsertResult);
