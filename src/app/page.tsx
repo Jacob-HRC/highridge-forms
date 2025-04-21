@@ -1,6 +1,6 @@
-import { Button } from "~/components/ui/button";
-import { SignInButton, SignUpButton, SignedIn, SignedOut, SignOutButton } from "@clerk/nextjs";
-import { ArrowRight } from "lucide-react";
+
+import { SignedIn } from "@clerk/nextjs";
+
 
 export default function Home() {
   return (

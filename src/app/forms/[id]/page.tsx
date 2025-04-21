@@ -15,7 +15,7 @@ import {
 import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
 import { getFormById } from '~/app/serveractions/forms/reimburesementformactions';
-import { FormValues } from '~/lib/schema';
+import type { FormValues } from '~/lib/schema';
 import FormPdfButton from "~/components/form-pdf-button";
 import { deleteReceipt } from "~/app/serveractions/forms/reimburesementformactions";
 import { TransactionForm } from "~/components/TransactionForm";
