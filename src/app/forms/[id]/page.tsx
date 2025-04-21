@@ -98,7 +98,7 @@ export default function EditFormPage() {
             }
         }
 
-        loadForm(); // Always call loadForm unconditionally inside useEffect
+        void loadForm(); // Add 'void' to explicitly mark the Promise as ignored
 
     }, [formId, reset]); // Dependency array remains the same
 
@@ -129,7 +129,7 @@ export default function EditFormPage() {
             });
 
             if (!result.success) {
-                throw new Error(result.error || 'Failed to delete receipt');
+                throw new Error(result.error ?? 'Failed to delete receipt');
             }
 
             // Refresh the form data to show the updated state

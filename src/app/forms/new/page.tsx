@@ -81,10 +81,11 @@ export default function NewFormPage() {
         ...data,
         transactions: await Promise.all(
           data.transactions.map(async (tx) => {
-            if (!tx.newFiles?.length) return tx;
+            // Add proper type checking before accessing .length
+            if (!tx.newFiles || !Array.isArray(tx.newFiles) || tx.newFiles.length === 0) return tx;
 
             const base64Files = await Promise.all(
-              Array.from(tx.newFiles as FileList).map(async (file, index) => ({
+              Array.from(tx.newFiles as unknown as FileList).map(async (file, index) => ({
                 // Add a temporary negative ID for new receipts
                 id: -(Date.now() + index), // Use negative IDs to indicate these are new receipts
                 name: file.name,
@@ -97,7 +98,7 @@ export default function NewFormPage() {
 
             return {
               ...tx,
-              receipts: [...(tx.receipts || []), ...base64Files]
+              receipts: [...(tx.receipts ?? []), ...base64Files]
             };
           })
         )
@@ -133,7 +134,12 @@ export default function NewFormPage() {
       </h1>
       <Form {...form}>
         <form
-          onSubmit={handleSubmit(onSubmit)}
+          onSubmit={(e) => {
+            void handleSubmit(onSubmit)(e).catch(error => {
+              console.error("Form submission error:", error);
+              alert("There was an error submitting the form.");
+            });
+          }}
           className="space-y-6"
         >
           {/* Reimbursed Person Fields */}
