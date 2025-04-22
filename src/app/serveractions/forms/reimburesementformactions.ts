@@ -290,7 +290,7 @@ export async function updateFormWithFiles({
                         console.log(`Inserting new receipts for transaction ${tx.id}:`, typedNewFiles);
                         const receiptInsertResult = await db.insert(receipts).values(
                             typedNewFiles.map((file) => ({
-                                transactionId: tx.id as number,
+                                transactionId: tx.id!, // Use non-nullable assertion instead of 'as number'
                                 name: file.name,
                                 fileType: file.type,
                                 base64Content: file.base64Content,
@@ -321,6 +321,7 @@ export async function updateFormWithFiles({
                         });
                     console.log('Transaction insert result:', transactionInsertResult);
 
+                    // Fix: Use type assertion with a more specific type
                     const newTransactionId = transactionInsertResult?.[0]?.insertId;
                     console.log('New transaction ID:', newTransactionId);
 
