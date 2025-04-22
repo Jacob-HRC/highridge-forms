@@ -199,6 +199,16 @@ export async function getFormById(formId: number) {
     }
 }
 
+// Move the ReceiptFile interface to the top of the file, before it's used
+// Add a proper type definition for file objects
+interface ReceiptFile {
+    name: string;
+    type: string;
+    base64Content: string;
+    createdAt: Date;
+    updatedAt: Date;
+}
+
 // Add this interface for the update form data
 interface UpdateFormData extends Omit<FormValues, 'transactions'> {
     transactions: Array<FormValues['transactions'][number] & {
@@ -258,13 +268,18 @@ export async function updateFormWithFiles({
                 // Check if this is an existing transaction (has a positive numeric ID)
                 if (tx.id && typeof tx.id === 'number' && tx.id > 0) {
                     // --- 3.1. Update existing transaction ---
-                    const { receipts: _existingReceipts, newFiles, ...txUpdateData } = txData;
+                    const { receipts: _existingReceipts, newFiles, ...txUpdateData } = txData as {
+                        receipts?: unknown;
+                        newFiles?: ReceiptFile[];
+                        [key: string]: unknown;
+                    };
+
                     const updatedTransactionResult = await db.update(transactions)
                         .set({
                             ...txUpdateData,
-                            date: new Date(txUpdateData.date ?? ''),
-                            createdAt: new Date(txUpdateData.createdAt ?? ''),
-                            updatedAt: new Date(txUpdateData.updatedAt ?? ''),
+                            date: txUpdateData.date ? new Date(txUpdateData.date as string) : new Date(),
+                            createdAt: txUpdateData.createdAt ? new Date(txUpdateData.createdAt as string) : new Date(),
+                            updatedAt: txUpdateData.updatedAt ? new Date(txUpdateData.updatedAt as string) : new Date(),
                             amount: parseFloat(String(txUpdateData.amount)),
                         })
                         .where(eq(transactions.id, tx.id));
@@ -274,7 +289,7 @@ export async function updateFormWithFiles({
                     if (newFiles && newFiles.length > 0) {
                         console.log(`Inserting new receipts for transaction ${tx.id}:`, newFiles);
                         const receiptInsertResult = await db.insert(receipts).values(
-                            newFiles.map((file: ReceiptFile) => ({
+                            newFiles.map((file) => ({
                                 transactionId: tx.id!,
                                 name: file.name,
                                 fileType: file.type,
@@ -290,7 +305,12 @@ export async function updateFormWithFiles({
                     console.log('Inserting new transaction');
 
                     // Destructure safely - tx.id might not exist
-                    const { id, receipts: ignoredReceipts, newFiles, ...txInsertData } = tx;
+                    const { id, receipts: ignoredReceipts, newFiles, ...txInsertData } = tx as {
+                        id?: number;
+                        receipts?: unknown;
+                        newFiles?: ReceiptFile[];
+                        [key: string]: unknown;
+                    };
 
                     console.log('New transaction data to insert:', {
                         formId,
@@ -300,7 +320,13 @@ export async function updateFormWithFiles({
 
                     const transactionInsertResult = await db.insert(transactions)
                         .values({
-                            formId: formId,
+                            formId,
+                            date: new Date(String(txInsertData.date)),
+                            description: String(txInsertData.description),
+                            accountLine: String(txInsertData.accountLine),
+                            department: String(txInsertData.department),
+                            placeVendor: String(txInsertData.placeVendor),
+                            // formId is already included in the spread object above
                             ...txInsertData,
                             amount: parseFloat(String(txInsertData.amount)),
                         });
@@ -314,7 +340,7 @@ export async function updateFormWithFiles({
                     if (newFiles && newFiles.length > 0 && newTransactionId) {
                         console.log(`Inserting receipts for new transaction ${newTransactionId}:`, newFiles);
                         const receiptInsertResult = await db.insert(receipts).values(
-                            newFiles.map((file: ReceiptFile) => ({
+                            newFiles.map((file) => ({
                                 transactionId: newTransactionId,
                                 name: file.name,
                                 fileType: file.type,
@@ -361,19 +387,4 @@ export async function updateFormWithFiles({
     }
 }
 
-// Add a proper type definition for file objects
-interface ReceiptFile {
-    name: string;
-    type: string;
-    base64Content: string;
-    createdAt: Date;
-    updatedAt: Date;
-}
-
-// Update the UpdateFormData interface to use this type
-interface UpdateFormData extends Omit<FormValues, 'transactions'> {
-    transactions: Array<FormValues['transactions'][number] & {
-        newFiles?: ReceiptFile[];
-    }>;
-    deletedTransactionIds?: number[];
-}
+// Remove the duplicate interface definitions at the end of the file
