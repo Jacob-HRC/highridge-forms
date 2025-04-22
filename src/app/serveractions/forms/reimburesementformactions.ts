@@ -202,13 +202,7 @@ export async function getFormById(formId: number) {
 // Add this interface for the update form data
 interface UpdateFormData extends Omit<FormValues, 'transactions'> {
     transactions: Array<FormValues['transactions'][number] & {
-        newFiles?: Array<{
-            name: string;
-            type: string;
-            base64Content: string;
-            createdAt: Date;
-            updatedAt: Date;
-        }>;
+        newFiles?: ReceiptFile[];
     }>;
     deletedTransactionIds?: number[];
 }
@@ -218,7 +212,7 @@ export async function updateFormWithFiles({
     form: formDataWithBase64,
 }: {
     id: number;
-    form: UpdateFormData; // Using our defined interface instead of 'any'
+    form: UpdateFormData; // Using our defined interface
 }) {
     try {
         console.log('Server action: updating form with files', formId, formDataWithBase64);
@@ -277,20 +271,11 @@ export async function updateFormWithFiles({
                     console.log(`Updated transaction ${tx.id} result:`, updatedTransactionResult);
 
                     // --- 3.2. Process new receipts for existing transaction ---
-                    // Type guard for newFiles
-                    const typedNewFiles = newFiles as Array<{
-                        name: string;
-                        type: string;
-                        base64Content: string;
-                        createdAt: Date;
-                        updatedAt: Date;
-                    }> | undefined;
-
-                    if (typedNewFiles && typedNewFiles.length > 0) {
-                        console.log(`Inserting new receipts for transaction ${tx.id}:`, typedNewFiles);
+                    if (newFiles && newFiles.length > 0) {
+                        console.log(`Inserting new receipts for transaction ${tx.id}:`, newFiles);
                         const receiptInsertResult = await db.insert(receipts).values(
-                            typedNewFiles.map((file) => ({
-                                transactionId: tx.id!, // Use non-nullable assertion instead of 'as number'
+                            newFiles.map((file: ReceiptFile) => ({
+                                transactionId: tx.id!,
                                 name: file.name,
                                 fileType: file.type,
                                 base64Content: file.base64Content,
@@ -326,19 +311,10 @@ export async function updateFormWithFiles({
                     console.log('New transaction ID:', newTransactionId);
 
                     // --- 3.4. Process receipts for new transaction ---
-                    // Type guard for newFiles
-                    const typedNewFilesForNewTx = newFiles as Array<{
-                        name: string;
-                        type: string;
-                        base64Content: string;
-                        createdAt: Date;
-                        updatedAt: Date;
-                    }> | undefined;
-
-                    if (typedNewFilesForNewTx && typedNewFilesForNewTx.length > 0 && newTransactionId) {
-                        console.log(`Inserting receipts for new transaction ${newTransactionId}:`, typedNewFilesForNewTx);
+                    if (newFiles && newFiles.length > 0 && newTransactionId) {
+                        console.log(`Inserting receipts for new transaction ${newTransactionId}:`, newFiles);
                         const receiptInsertResult = await db.insert(receipts).values(
-                            typedNewFilesForNewTx.map((file) => ({
+                            newFiles.map((file: ReceiptFile) => ({
                                 transactionId: newTransactionId,
                                 name: file.name,
                                 fileType: file.type,
@@ -383,4 +359,21 @@ export async function updateFormWithFiles({
         console.error('Error updating form with files (server action):', error);
         return { success: false, error: 'Failed to update form', details: error };
     }
+}
+
+// Add a proper type definition for file objects
+interface ReceiptFile {
+    name: string;
+    type: string;
+    base64Content: string;
+    createdAt: Date;
+    updatedAt: Date;
+}
+
+// Update the UpdateFormData interface to use this type
+interface UpdateFormData extends Omit<FormValues, 'transactions'> {
+    transactions: Array<FormValues['transactions'][number] & {
+        newFiles?: ReceiptFile[];
+    }>;
+    deletedTransactionIds?: number[];
 }
