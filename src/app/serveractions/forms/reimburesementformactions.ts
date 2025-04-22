@@ -218,7 +218,7 @@ export async function updateFormWithFiles({
     form: formDataWithBase64,
 }: {
     id: number;
-    form: UpdateFormData; // Replace 'any' with our new interface
+    form: UpdateFormData; // Using our defined interface instead of 'any'
 }) {
     try {
         console.log('Server action: updating form with files', formId, formDataWithBase64);
@@ -264,7 +264,7 @@ export async function updateFormWithFiles({
                 // Check if this is an existing transaction (has a positive numeric ID)
                 if (tx.id && typeof tx.id === 'number' && tx.id > 0) {
                     // --- 3.1. Update existing transaction ---
-                    const { receipts: existingReceipts, newFiles, ...txUpdateData } = txData;
+                    const { receipts: _existingReceipts, newFiles, ...txUpdateData } = txData;
                     const updatedTransactionResult = await db.update(transactions)
                         .set({
                             ...txUpdateData,
@@ -277,17 +277,20 @@ export async function updateFormWithFiles({
                     console.log(`Updated transaction ${tx.id} result:`, updatedTransactionResult);
 
                     // --- 3.2. Process new receipts for existing transaction ---
-                    if (newFiles && newFiles.length > 0) {
-                        console.log(`Inserting new receipts for transaction ${tx.id}:`, newFiles);
+                    // Type guard for newFiles
+                    const typedNewFiles = newFiles as Array<{
+                        name: string;
+                        type: string;
+                        base64Content: string;
+                        createdAt: Date;
+                        updatedAt: Date;
+                    }> | undefined;
+
+                    if (typedNewFiles && typedNewFiles.length > 0) {
+                        console.log(`Inserting new receipts for transaction ${tx.id}:`, typedNewFiles);
                         const receiptInsertResult = await db.insert(receipts).values(
-                            newFiles.map((file: {
-                                name: string;
-                                type: string;
-                                base64Content: string;
-                                createdAt: Date;
-                                updatedAt: Date;
-                            }) => ({
-                                transactionId: tx.id,
+                            typedNewFiles.map((file) => ({
+                                transactionId: tx.id as number,
                                 name: file.name,
                                 fileType: file.type,
                                 base64Content: file.base64Content,
@@ -322,22 +325,25 @@ export async function updateFormWithFiles({
                     console.log('New transaction ID:', newTransactionId);
 
                     // --- 3.4. Process receipts for new transaction ---
-                    if (newFiles && newFiles.length > 0 && newTransactionId) {
-                        console.log(`Inserting receipts for new transaction ${newTransactionId}:`, newFiles);
+                    // Type guard for newFiles
+                    const typedNewFilesForNewTx = newFiles as Array<{
+                        name: string;
+                        type: string;
+                        base64Content: string;
+                        createdAt: Date;
+                        updatedAt: Date;
+                    }> | undefined;
+
+                    if (typedNewFilesForNewTx && typedNewFilesForNewTx.length > 0 && newTransactionId) {
+                        console.log(`Inserting receipts for new transaction ${newTransactionId}:`, typedNewFilesForNewTx);
                         const receiptInsertResult = await db.insert(receipts).values(
-                            newFiles.map((file: {
-                                name: string;
-                                type: string;
-                                base64Content: string;
-                                createdAt: Date;
-                                updatedAt: Date;
-                            }) => ({
+                            typedNewFilesForNewTx.map((file) => ({
                                 transactionId: newTransactionId,
                                 name: file.name,
                                 fileType: file.type,
                                 base64Content: file.base64Content,
                                 createdAt: file.createdAt,
-                                updatedAt: file.updatedAt // Fixed typo: updateAt -> updatedAt
+                                updatedAt: file.updatedAt
                             }))
                         );
                         console.log('Receipt insert result (for new transaction):', receiptInsertResult);
