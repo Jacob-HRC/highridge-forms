@@ -22,7 +22,7 @@ export default function FormsTable() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    loadForms();
+    void loadForms();
   }, []);
 
   const loadForms = async () => {
@@ -49,9 +49,9 @@ export default function FormsTable() {
     try {
       const result = await deleteForm(formId);
       if (result.success) {
-        loadForms();
+        void loadForms();
       } else {
-        setError(result.error || 'Failed to delete form');
+        setError(result.error ?? 'Failed to delete form');
       }
     } catch (e) {
       console.error('Delete error:', e);
@@ -60,7 +60,7 @@ export default function FormsTable() {
   };
 
   if (forms.length === 0) {
-    return <p>{error || "No forms found."}</p>;
+    return <p>{error ?? "No forms found."}</p>;
   }
 
   return (
