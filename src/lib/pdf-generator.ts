@@ -109,7 +109,10 @@ export async function generateFormPdf(formData: FormData): Promise<Uint8Array> {
 
         // Calculate total amount
         const totalAmount = formData.transactions.reduce(
-            (sum: number, tx: FormTransaction) => sum + (typeof tx.amount === 'number' ? tx.amount : 0),
+            (sum: number, tx: FormTransaction | undefined) => {
+                if (!tx || typeof tx.amount !== 'number') return sum;
+                return sum + tx.amount;
+            },
             0
         );
 
@@ -149,6 +152,12 @@ export async function generateFormPdf(formData: FormData): Promise<Uint8Array> {
         // Loop through each transaction
         for (let i = 0; i < formData.transactions.length; i++) {
             const transaction = formData.transactions[i];
+            
+            // Skip if transaction is undefined
+            if (!transaction) {
+                console.warn(`Transaction at index ${i} is undefined, skipping.`);
+                continue;
+            }
 
             ensureSpace(120); // Ensure enough space for transaction header and details
 
@@ -160,13 +169,13 @@ export async function generateFormPdf(formData: FormData): Promise<Uint8Array> {
             addText(`Date: ${formatDate(transaction.date)}`, margin + 10, yPos, 10);
             yPos -= smallLineHeight;
 
-            addText(`Account Line: ${transaction.accountLine}`, margin + 10, yPos, 10);
+            addText(`Account Line: ${transaction.accountLine || 'Not specified'}`, margin + 10, yPos, 10);
             yPos -= smallLineHeight;
 
-            addText(`Department: ${transaction.department}`, margin + 10, yPos, 10);
+            addText(`Department: ${transaction.department || 'Not specified'}`, margin + 10, yPos, 10);
             yPos -= smallLineHeight;
 
-            addText(`Place/Vendor: ${transaction.placeVendor}`, margin + 10, yPos, 10);
+            addText(`Place/Vendor: ${transaction.placeVendor || 'Not specified'}`, margin + 10, yPos, 10);
             yPos -= smallLineHeight;
 
             addText(`Amount: $${(transaction.amount || 0).toFixed(2)}`, margin + 10, yPos, 10);
@@ -188,6 +197,11 @@ export async function generateFormPdf(formData: FormData): Promise<Uint8Array> {
                 yPos -= lineHeight;
 
                 for (const receipt of transaction.receipts) {
+                    // Skip if receipt is undefined
+                    if (!receipt) {
+                        console.warn(`Receipt in transaction ${transaction.id || i} is undefined, skipping.`);
+                        continue;
+                    }
                     try {
                         if (!receipt.base64Content) {
                             addText(`${receipt.name} (Content not available)`, margin + 20, yPos, 10);
