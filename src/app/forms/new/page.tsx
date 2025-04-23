@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { useForm } from "react-hook-form";
@@ -25,7 +26,8 @@ import { reimbursementFormSchema, type FormValues } from "~/lib/schema";
 // Add import for the server action
 import { addForm } from "~/app/serveractions/forms/reimburesementformactions";
 
-export default function NewFormPage() {
+// Form content component that uses useSearchParams
+function FormContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useUser();
@@ -187,6 +189,15 @@ export default function NewFormPage() {
         </form>
       </Form>
     </div>
+  );
+}
+
+// Main page component that wraps the form content with Suspense
+export default function NewFormPage() {
+  return (
+    <Suspense fallback={<div className="max-w-3xl mx-auto p-6 bg-gray-800 rounded-lg shadow-lg text-gray-100">Loading form...</div>}>
+      <FormContent />
+    </Suspense>
   );
 }
 
