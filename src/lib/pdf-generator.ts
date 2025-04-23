@@ -65,7 +65,7 @@ export async function generateFormPdf(formData: FormData): Promise<Uint8Array> {
         const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
         // Add the first page
-        let page = pdfDoc.addPage([600, 800]);
+        const page = pdfDoc.addPage([600, 800]);
 
         // Set some initial variables for positioning
         let currentPage = page;
@@ -152,7 +152,7 @@ export async function generateFormPdf(formData: FormData): Promise<Uint8Array> {
         // Loop through each transaction
         for (let i = 0; i < formData.transactions.length; i++) {
             const transaction = formData.transactions[i];
-            
+
             // Skip if transaction is undefined
             if (!transaction) {
                 console.warn(`Transaction at index ${i} is undefined, skipping.`);
@@ -199,7 +199,7 @@ export async function generateFormPdf(formData: FormData): Promise<Uint8Array> {
                 for (const receipt of transaction.receipts) {
                     // Skip if receipt is undefined
                     if (!receipt) {
-                        console.warn(`Receipt in transaction ${transaction.id || i} is undefined, skipping.`);
+                        console.warn(`Receipt in transaction ${transaction.id ?? i} is undefined, skipping.`);
                         continue;
                     }
                     try {
