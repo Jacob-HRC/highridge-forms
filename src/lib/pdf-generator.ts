@@ -8,14 +8,14 @@ interface FormReceipt {
     fileType: string;
     base64Content: string;
     transactionId?: number;
-    createdAt?: Date;
-    updatedAt?: Date;
+    createdAt?: Date | string | null;
+    updatedAt?: Date | string | null;
 }
 
 interface FormTransaction {
     id?: number;
     transactionId?: number;
-    date: Date | string;
+    date: Date | string | null;
     accountLine: string;
     department: string;
     placeVendor: string;
@@ -23,8 +23,8 @@ interface FormTransaction {
     amount: number;
     receipts?: FormReceipt[];
     formId?: number;
-    createdAt?: Date | string;
-    updatedAt?: Date | string;
+    createdAt?: Date | string | null;
+    updatedAt?: Date | string | null;
 }
 
 interface FormDetails {
@@ -35,8 +35,8 @@ interface FormDetails {
     submitterName: string;
     reimbursedName: string;
     reimbursedEmail: string;
-    createdAt: Date | string;
-    updatedAt: Date | string;
+    createdAt: Date | string | null;
+    updatedAt: Date | string | null;
 }
 
 interface FormData {
@@ -99,7 +99,12 @@ export async function generateFormPdf(formData: FormData): Promise<Uint8Array> {
         // Format date to a readable string
         const formatDate = (date: string | Date | null): string => {
             if (!date) return 'N/A';
-            return new Date(date).toLocaleDateString();
+            try {
+                return new Date(date).toLocaleDateString();
+            } catch (error) {
+                console.error('Error formatting date:', date, error);
+                return 'Invalid Date';
+            }
         };
 
         // Calculate total amount
@@ -164,7 +169,7 @@ export async function generateFormPdf(formData: FormData): Promise<Uint8Array> {
             addText(`Place/Vendor: ${transaction.placeVendor}`, margin + 10, yPos, 10);
             yPos -= smallLineHeight;
 
-            addText(`Amount: $${transaction.amount.toFixed(2)}`, margin + 10, yPos, 10);
+            addText(`Amount: $${(transaction.amount || 0).toFixed(2)}`, margin + 10, yPos, 10);
             yPos -= smallLineHeight;
 
             // Description might wrap, so we'll handle it differently
