@@ -6,7 +6,7 @@ import { FormField, FormItem, FormControl, FormMessage, FormLabel } from "~/comp
 import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
 import { File } from "lucide-react";
-import { Control } from "react-hook-form";
+import type { Control } from "react-hook-form";
 
 export interface Receipt {
     id: number;
@@ -22,7 +22,7 @@ interface ReceiptsProps {
     isEditing: boolean;
     transactionId: number;
     onDeleteReceipt: (transactionId: number, receiptId: number) => void;
-    control: Control<any>;
+    control: Control<Record<string, unknown>>;
     fileFieldName: string;
 }
 
