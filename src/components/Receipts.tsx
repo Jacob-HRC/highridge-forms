@@ -7,7 +7,6 @@ import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
 import { File } from "lucide-react";
 import type { Control, FieldValues } from "react-hook-form";
-import type { FormValues } from "~/lib/schema";
 
 export interface Receipt {
     id: number;
@@ -18,23 +17,23 @@ export interface Receipt {
     updatedAt?: Date;
 }
 
-interface ReceiptsProps {
+interface ReceiptsProps<T extends FieldValues = FieldValues> {
     receipts?: Receipt[];
     isEditing: boolean;
     transactionId: number;
     onDeleteReceipt: (transactionId: number, receiptId: number) => void;
-    control: Control<FormValues | FieldValues>;
+    control: Control<T>;
     fileFieldName: string;
 }
 
-export default function Receipts({
+export default function Receipts<T extends FieldValues = FieldValues>({
     receipts = [],
     isEditing,
     transactionId,
     onDeleteReceipt,
     control,
     fileFieldName,
-}: ReceiptsProps) {
+}: ReceiptsProps<T>) {
     return (
         <div className="mt-4">
             <FormLabel>Receipts</FormLabel>
