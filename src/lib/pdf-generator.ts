@@ -1,7 +1,50 @@
 // src/lib/pdf-generator.ts
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { PDFDocument, rgb, StandardFonts, PDFImage, PDFPage, PDFEmbeddedPage } from 'pdf-lib';
 
-export async function generateFormPdf(formData: any): Promise<Uint8Array> {
+// Define the TypeScript interfaces for the form data
+interface FormReceipt {
+    id: number;
+    name: string;
+    fileType: string;
+    base64Content: string;
+    transactionId?: number;
+    createdAt?: Date;
+    updatedAt?: Date;
+}
+
+interface FormTransaction {
+    id?: number;
+    transactionId?: number;
+    date: Date | string;
+    accountLine: string;
+    department: string;
+    placeVendor: string;
+    description: string;
+    amount: number;
+    receipts?: FormReceipt[];
+    formId?: number;
+    createdAt?: Date | string;
+    updatedAt?: Date | string;
+}
+
+interface FormDetails {
+    id: number;
+    userId: string;
+    formType: string;
+    submitterEmail: string;
+    submitterName: string;
+    reimbursedName: string;
+    reimbursedEmail: string;
+    createdAt: Date | string;
+    updatedAt: Date | string;
+}
+
+interface FormData {
+    form: FormDetails;
+    transactions: FormTransaction[];
+}
+
+export async function generateFormPdf(formData: FormData): Promise<Uint8Array> {
     try {
         console.log("Starting PDF generation with data:", JSON.stringify({
             formId: formData.form?.id,
@@ -61,7 +104,7 @@ export async function generateFormPdf(formData: any): Promise<Uint8Array> {
 
         // Calculate total amount
         const totalAmount = formData.transactions.reduce(
-            (sum: number, tx: any) => sum + (typeof tx.amount === 'number' ? tx.amount : 0),
+            (sum: number, tx: FormTransaction) => sum + (typeof tx.amount === 'number' ? tx.amount : 0),
             0
         );
 
@@ -165,7 +208,7 @@ export async function generateFormPdf(formData: any): Promise<Uint8Array> {
                             }
 
                             // Embed the image
-                            let image;
+                            let image: PDFImage | undefined;
                             if (receipt.fileType.includes('png')) {
                                 image = await pdfDoc.embedPng(base64Data);
                             } else if (receipt.fileType.includes('jpg') || receipt.fileType.includes('jpeg')) {
@@ -212,11 +255,11 @@ export async function generateFormPdf(formData: any): Promise<Uint8Array> {
 
                                 // Load the PDF
                                 const embedPdf = await PDFDocument.load(bytes);
-                                const [firstPage] = await pdfDoc.embedPdf(embedPdf, [0]);
+                                const [firstPage]: PDFEmbeddedPage[] = await pdfDoc.embedPdf(embedPdf, [0]);
 
                                 // Add the PDF page
                                 ensureSpace(300); // Ensure space for embedded PDF
-                                const pdfPage = pdfDoc.addPage();
+                                const pdfPage: PDFPage = pdfDoc.addPage();
 
                                 // Add text indicating this is an embedded receipt
                                 pdfPage.drawText(`Embedded PDF Receipt: ${receipt.name}`, {
