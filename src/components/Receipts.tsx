@@ -6,10 +6,15 @@ import { FormField, FormItem, FormControl, FormMessage, FormLabel } from "~/comp
 import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
 import { File } from "lucide-react";
+import { Control } from "react-hook-form";
 
 export interface Receipt {
     id: number;
     name: string;
+    fileType?: string;
+    base64Content?: string;
+    createdAt?: Date;
+    updatedAt?: Date;
 }
 
 interface ReceiptsProps {
@@ -17,7 +22,7 @@ interface ReceiptsProps {
     isEditing: boolean;
     transactionId: number;
     onDeleteReceipt: (transactionId: number, receiptId: number) => void;
-    control: any;
+    control: Control<any>;
     fileFieldName: string;
 }
 
@@ -61,8 +66,10 @@ export default function Receipts({
                                         type="file"
                                         multiple
                                         accept="image/*,.pdf"
-                                        onChange={(e) => {
-                                            field.onChange(e.target.files);
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                            if (e.target.files) {
+                                                field.onChange(e.target.files);
+                                            }
                                         }}
                                     />
                                 </FormControl>
