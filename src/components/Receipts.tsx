@@ -6,7 +6,7 @@ import { FormField, FormItem, FormControl, FormMessage, FormLabel } from "~/comp
 import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
 import { File } from "lucide-react";
-import type { Control, FieldValues } from "react-hook-form";
+import type { Control, FieldValues, Path } from "react-hook-form";
 
 export interface Receipt {
     id: number;
@@ -23,7 +23,7 @@ interface ReceiptsProps<T extends FieldValues = FieldValues> {
     transactionId: number;
     onDeleteReceipt: (transactionId: number, receiptId: number) => void;
     control: Control<T>;
-    fileFieldName: string;
+    fileFieldName: Path<T>;
 }
 
 export default function Receipts<T extends FieldValues = FieldValues>({

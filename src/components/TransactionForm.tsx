@@ -1,6 +1,6 @@
 'use client';
 
-import { useFieldArray, UseFormReturn } from 'react-hook-form';
+import { useFieldArray, UseFormReturn, Path } from 'react-hook-form';
 import { FormValues } from '~/lib/schema';
 import { Button } from '~/components/ui/button';
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from '~/components/ui/form';
@@ -234,7 +234,7 @@ export function TransactionForm({
             ) ?? []}
             transactionId={fieldItem.id}
             control={control}
-            fileFieldName={`transactions.${index}.newFiles`}
+            fileFieldName={`transactions.${index}.newFiles` as Path<FormValues>}
             isEditing={isEditing}
             onDeleteReceipt={(transactionId, receiptId) => onDeleteReceipt?.(transactionId, receiptId)}
           />
