@@ -7,6 +7,7 @@ import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
 import { File, Loader2 } from "lucide-react";
 import { Skeleton } from "~/components/ui/skeleton";
+import Image from "next/image";
 import type { Control, FieldValues, Path } from "react-hook-form";
 
 export interface Receipt {
@@ -59,12 +60,15 @@ export default function Receipts<T extends FieldValues = FieldValues>({
                                 <div key={receipt.id} className="flex flex-col items-center border border-border/40 hover:border-border/80 bg-card text-card-foreground p-2 rounded transition-colors">
                                     {receipt.fileType?.startsWith('image/') && receipt.base64Content ? (
                                         <div className="w-24 h-24 flex items-center justify-center overflow-hidden">
-                                            <img 
+                                            <Image 
                                                 src={receipt.base64Content.startsWith('data:') 
                                                     ? receipt.base64Content 
                                                     : `data:${receipt.fileType};base64,${receipt.base64Content}`} 
                                                 alt={receipt.name}
                                                 className="max-w-full max-h-full object-contain"
+                                                width={96}
+                                                height={96}
+                                                priority
                                             />
                                         </div>
                                     ) : (

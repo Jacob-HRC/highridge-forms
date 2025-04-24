@@ -2,7 +2,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import {
     Form,
@@ -134,10 +134,10 @@ export default function EditFormPage() {
                     
                     // Update only the receipts in the form
                     const currentValues = form.getValues();
-                    const transactionsWithReceipts = currentValues.transactions.map((tx, index) => {
+                    const transactionsWithReceipts = currentValues.transactions.map((tx) => {
                         // Find the matching transaction from the full data
                         const matchingTx = fullFormData.transactions.find(t => t.transactionId === tx.id);
-                        if (matchingTx && matchingTx.receipts && matchingTx.receipts.length > 0) {
+                        if (matchingTx?.receipts?.length > 0) {
                             console.log(`Found ${matchingTx.receipts.length} receipts for transaction ${tx.id}`);
                             return {
                                 ...tx,

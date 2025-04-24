@@ -166,7 +166,7 @@ export async function getForms(userId?: string) {
     }
 }
 
-export async function getFormById(formId: number, skipReceipts: boolean = false) {
+export async function getFormById(formId: number, skipReceipts = false) {
     try {
         console.log('Server action: fetching form by ID', formId, skipReceipts ? '(skipping receipts)' : '');
 
@@ -274,7 +274,7 @@ export async function getFormById(formId: number, skipReceipts: boolean = false)
             // Map transactions with their receipts
             transactionsWithReceipts = transactionsResult.map(transaction => {
                 const { id, ...rest } = transaction;
-                const txReceipts = receiptsByTransactionId[id] || [];
+                const txReceipts = receiptsByTransactionId[id] ?? [];
                 console.log(`Mapping transaction ${id} with ${txReceipts.length} receipts`);
                 return {
                     transactionId: id,
