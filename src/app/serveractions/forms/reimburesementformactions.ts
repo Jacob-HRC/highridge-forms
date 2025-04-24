@@ -148,14 +148,16 @@ export async function getForms(userId?: string) {
     try {
         console.log('Server action: fetching forms', userId ? `for user ${userId}` : 'for all users');
         
-        let query = db.select().from(forms);
-        
-        // If userId is provided, filter by user
+        // Build the query based on whether we have a userId
+        let formList;
         if (userId) {
-            query = query.where(eq(forms.userId, userId));
+            formList = await db.select()
+                .from(forms)
+                .where(eq(forms.userId, userId));
+        } else {
+            formList = await db.select().from(forms);
         }
         
-        const formList = await query;
         console.log(`Fetched ${formList.length} forms`);
         return formList;
     } catch (error) {
