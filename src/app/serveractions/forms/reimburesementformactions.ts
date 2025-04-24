@@ -200,8 +200,19 @@ export async function getFormById(formId: number, skipReceipts: boolean = false)
             const txIds = transactionsResult.map(tx => tx.id);
             console.log(`Fetching receipts for transaction IDs:`, txIds);
             
+            // Define the receipt type to avoid implicit any
+            type ReceiptResult = {
+                id: number;
+                transactionId: number;
+                name: string;
+                fileType: string;
+                base64Content: string;
+                createdAt: Date | null;
+                updatedAt: Date | null;
+            };
+            
             // Make sure we have transaction IDs before querying
-            let allReceiptsResult = [];
+            let allReceiptsResult: ReceiptResult[] = [];
             if (txIds.length > 0) {
                 try {
                     // If we have a lot of transaction IDs, we might hit performance issues with too many OR conditions
@@ -232,7 +243,7 @@ export async function getFormById(formId: number, skipReceipts: boolean = false)
                         
                         // Execute all batch queries and combine results
                         const batchResults = await Promise.all(batches);
-                        allReceiptsResult = batchResults.flat();
+                        allReceiptsResult = batchResults.flat() as ReceiptResult[];
                     }
                     
                     console.log(`Found ${allReceiptsResult.length} total receipts`);
@@ -250,7 +261,7 @@ export async function getFormById(formId: number, skipReceipts: boolean = false)
                 }
                 acc[txId].push(receipt);
                 return acc;
-            }, {} as Record<number, typeof allReceiptsResult>);
+            }, {} as Record<number, ReceiptResult[]>);
             
             // Debug group results
             Object.keys(receiptsByTransactionId).forEach(txId => {
