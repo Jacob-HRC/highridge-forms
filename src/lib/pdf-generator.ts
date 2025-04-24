@@ -1,5 +1,6 @@
 // src/lib/pdf-generator.ts
-import { PDFDocument, rgb, StandardFonts, PDFImage, PDFPage, PDFEmbeddedPage } from 'pdf-lib';
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import type { PDFImage, PDFPage, PDFEmbeddedPage } from 'pdf-lib';
 
 // Define the TypeScript interfaces for the form data
 interface FormReceipt {
