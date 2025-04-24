@@ -18,6 +18,7 @@ import Receipts from './Receipts';
 interface TransactionFormProps {
   form: UseFormReturn<FormValues>;
   isEditing?: boolean;
+  isLoadingReceipts?: boolean;
   onRemoveTransaction?: (index: number) => void;
   onDeleteReceipt?: (transactionId: number, receiptId: number) => Promise<void>;
 }
@@ -25,6 +26,7 @@ interface TransactionFormProps {
 export function TransactionForm({
   form,
   isEditing = true,
+  isLoadingReceipts = false,
   onRemoveTransaction,
   onDeleteReceipt,
 }: TransactionFormProps) {
@@ -225,10 +227,13 @@ export function TransactionForm({
           </div>
 
           <Receipts
-            receipts={fieldItem.receipts?.filter((receipt): receipt is { id: number; name: string; fileType: string; base64Content: string; createdAt: Date; updatedAt: Date; } => receipt.id !== undefined &&
+            receipts={fieldItem.receipts?.filter((receipt): receipt is { id: number; name: string; fileType: string; base64Content: string; createdAt: Date; updatedAt: Date; } => 
+              receipt !== null && 
+              receipt !== undefined &&
+              typeof receipt === 'object' &&
+              'id' in receipt && 
               receipt.id !== undefined &&
-              'createdAt' in receipt &&
-              'updatedAt' in receipt &&
+              'name' in receipt &&
               'fileType' in receipt &&
               'base64Content' in receipt
             ) ?? []}
@@ -236,6 +241,7 @@ export function TransactionForm({
             control={control}
             fileFieldName={`transactions.${index}.newFiles` as Path<FormValues>}
             isEditing={isEditing}
+            isLoading={isLoadingReceipts}
             onDeleteReceipt={(transactionId, receiptId) => onDeleteReceipt?.(transactionId, receiptId)}
           />
 

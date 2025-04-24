@@ -1,7 +1,7 @@
 // src/app/serveractions/forms/reimburesementformactions.ts
 'use server';
 import { db } from "~/server/db";
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import { forms, transactions, receipts } from "~/server/db/schema";
 import { reimbursementFormSchema, type FormValues } from "~/lib/schema";
 import { revalidatePath } from "next/cache";
@@ -144,11 +144,19 @@ export async function addForm({
     }
 }
 
-export async function getForms() {
+export async function getForms(userId?: string) {
     try {
-        console.log('Server action: fetching forms');
-        const formList = await db.select().from(forms);
-        console.log('Fetched forms:', formList);
+        console.log('Server action: fetching forms', userId ? `for user ${userId}` : 'for all users');
+        
+        let query = db.select().from(forms);
+        
+        // If userId is provided, filter by user
+        if (userId) {
+            query = query.where(eq(forms.userId, userId));
+        }
+        
+        const formList = await query;
+        console.log(`Fetched ${formList.length} forms`);
         return formList;
     } catch (error) {
         console.error('Error fetching forms:', error);
@@ -156,9 +164,9 @@ export async function getForms() {
     }
 }
 
-export async function getFormById(formId: number) {
+export async function getFormById(formId: number, skipReceipts: boolean = false) {
     try {
-        console.log('Server action: fetching form by ID', formId);
+        console.log('Server action: fetching form by ID', formId, skipReceipts ? '(skipping receipts)' : '');
 
         // Fetch the form itself
         const formResult = await db.select().from(forms).where(eq(forms.id, formId));
@@ -171,22 +179,96 @@ export async function getFormById(formId: number) {
 
         // Fetch related transactions for this form
         const transactionsResult = await db.select().from(transactions).where(eq(transactions.formId, formId));
-        const transactionsWithReceipts = await Promise.all(
-            transactionsResult.map(async (transaction) => {
-                const receiptsResult = await db.select().from(receipts).where(eq(receipts.transactionId, transaction.id));
-                // Rename original id to transactionId
+        console.log(`Found ${transactionsResult.length} transactions for form ${formId}`);
+        
+        let transactionsWithReceipts;
+        
+        if (skipReceipts) {
+            // If skipReceipts is true, don't fetch the receipt content
+            transactionsWithReceipts = transactionsResult.map(transaction => {
                 const { id, ...rest } = transaction;
                 return {
                     transactionId: id,
                     ...rest,
-                    receipts: receiptsResult,
+                    receipts: [], // Empty array instead of fetching receipts
                 };
-            })
-        );
+            });
+        } else {
+            // Fetch all receipts for this form with a single query
+            const txIds = transactionsResult.map(tx => tx.id);
+            console.log(`Fetching receipts for transaction IDs:`, txIds);
+            
+            // Make sure we have transaction IDs before querying
+            let allReceiptsResult = [];
+            if (txIds.length > 0) {
+                try {
+                    // If we have a lot of transaction IDs, we might hit performance issues with too many OR conditions
+                    // So we'll batch the queries if there are more than 10 transactions
+                    if (txIds.length <= 10) {
+                        // For a small number of transactions, use OR conditions
+                        const orConditions = txIds.map(txId => eq(receipts.transactionId, txId));
+                        
+                        allReceiptsResult = await db.select()
+                            .from(receipts)
+                            .where(orConditions.length === 1 ? orConditions[0] : or(...orConditions));
+                    } else {
+                        // For many transactions, do separate queries for each batch of 10 transactions
+                        // and combine the results
+                        const batchSize = 10;
+                        const batches = [];
+                        
+                        for (let i = 0; i < txIds.length; i += batchSize) {
+                            const batchIds = txIds.slice(i, i + batchSize);
+                            const orConditions = batchIds.map(txId => eq(receipts.transactionId, txId));
+                            
+                            batches.push(
+                                db.select()
+                                    .from(receipts)
+                                    .where(orConditions.length === 1 ? orConditions[0] : or(...orConditions))
+                            );
+                        }
+                        
+                        // Execute all batch queries and combine results
+                        const batchResults = await Promise.all(batches);
+                        allReceiptsResult = batchResults.flat();
+                    }
+                    
+                    console.log(`Found ${allReceiptsResult.length} total receipts`);
+                } catch (receiptError) {
+                    console.error('Error fetching receipts:', receiptError);
+                    allReceiptsResult = [];
+                }
+            }
+            
+            // Group receipts by transactionId
+            const receiptsByTransactionId = allReceiptsResult.reduce((acc, receipt) => {
+                const txId = receipt.transactionId;
+                if (!acc[txId]) {
+                    acc[txId] = [];
+                }
+                acc[txId].push(receipt);
+                return acc;
+            }, {} as Record<number, typeof allReceiptsResult>);
+            
+            // Debug group results
+            Object.keys(receiptsByTransactionId).forEach(txId => {
+                console.log(`Transaction ${txId} has ${receiptsByTransactionId[Number(txId)].length} receipts`);
+            });
+            
+            // Map transactions with their receipts
+            transactionsWithReceipts = transactionsResult.map(transaction => {
+                const { id, ...rest } = transaction;
+                const txReceipts = receiptsByTransactionId[id] || [];
+                console.log(`Mapping transaction ${id} with ${txReceipts.length} receipts`);
+                return {
+                    transactionId: id,
+                    ...rest,
+                    receipts: txReceipts,
+                };
+            });
+        }
 
-
-        console.log('Fetched form:', form);
-        console.log('Fetched transactions with receipts:', transactionsWithReceipts);
+        console.log('Completed fetching form with', transactionsWithReceipts.length, 'transactions');
 
         return {
             form: form,

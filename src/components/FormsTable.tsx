@@ -6,6 +6,7 @@ import { getForms } from '~/app/serveractions/forms/reimburesementformactions';
 import { deleteForm } from '~/app/serveractions/forms/deleteFormAction';
 import { useState, useEffect } from 'react';
 import FormPdfButton from '~/components/form-pdf-button';
+import { useUser } from "@clerk/nextjs";
 
 type Form = {
   id: number;
@@ -18,16 +19,21 @@ type Form = {
 };
 
 export default function FormsTable() {
+  const { user } = useUser();
   const [forms, setForms] = useState<Form[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    void loadForms();
-  }, []);
+    if (user?.id) {
+      void loadForms(user.id);
+    }
+  }, [user?.id]);
 
-  const loadForms = async () => {
+  const loadForms = async (userId: string) => {
+    setLoading(true);
     try {
-      const formsData = await getForms();
+      const formsData = await getForms(userId);
       // Sort forms by updatedAt date in descending order
       const sortedForms = formsData.sort((a, b) => {
         const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
@@ -38,6 +44,8 @@ export default function FormsTable() {
     } catch (e) {
       console.error('Forms fetch error:', e);
       setError(`Error fetching forms: ${e instanceof Error ? e.message : 'Unknown error'}`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -49,7 +57,9 @@ export default function FormsTable() {
     try {
       const result = await deleteForm(formId);
       if (result.success) {
-        void loadForms();
+        if (user?.id) {
+          void loadForms(user.id);
+        }
       } else {
         setError(result.error ?? 'Failed to delete form');
       }
@@ -59,8 +69,16 @@ export default function FormsTable() {
     }
   };
 
+  if (loading) {
+    return <p className="text-gray-400 animate-pulse">Loading forms...</p>;
+  }
+  
+  if (error) {
+    return <p className="text-red-400">{error}</p>;
+  }
+  
   if (forms.length === 0) {
-    return <p>{error ?? "No forms found."}</p>;
+    return <p className="text-gray-400">No forms found.</p>;
   }
 
   return (
