@@ -137,7 +137,8 @@ export default function EditFormPage() {
                     const transactionsWithReceipts = currentValues.transactions.map((tx) => {
                         // Find the matching transaction from the full data
                         const matchingTx = fullFormData.transactions.find(t => t.transactionId === tx.id);
-                        if (matchingTx?.receipts?.length > 0) {
+                        // Make sure receipts array exists and has items
+                        if (matchingTx?.receipts && matchingTx.receipts.length > 0) {
                             console.log(`Found ${matchingTx.receipts.length} receipts for transaction ${tx.id}`);
                             return {
                                 ...tx,
