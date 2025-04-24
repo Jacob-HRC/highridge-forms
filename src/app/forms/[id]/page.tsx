@@ -141,7 +141,14 @@ export default function EditFormPage() {
                             console.log(`Found ${matchingTx.receipts.length} receipts for transaction ${tx.id}`);
                             return {
                                 ...tx,
-                                receipts: matchingTx.receipts.map(receipt => ({
+                                receipts: matchingTx.receipts.map((receipt: {
+                                    id: number;
+                                    name: string;
+                                    fileType: string;
+                                    base64Content: string;
+                                    createdAt?: Date | string | null;
+                                    updatedAt?: Date | string | null;
+                                }) => ({
                                     id: receipt.id,
                                     createdAt: receipt.createdAt ? new Date(receipt.createdAt) : new Date(),
                                     updatedAt: receipt.updatedAt ? new Date(receipt.updatedAt) : new Date(),
@@ -214,7 +221,14 @@ export default function EditFormPage() {
                         placeVendor: tx.placeVendor,
                         description: tx.description || "",
                         amount: tx.amount,
-                        receipts: tx.receipts?.map(receipt => ({
+                        receipts: tx.receipts?.map((receipt: {
+                            id: number;
+                            name: string;
+                            fileType: string;
+                            base64Content: string;
+                            createdAt?: Date | string | null;
+                            updatedAt?: Date | string | null;
+                        }) => ({
                             ...receipt,
                             createdAt: receipt.createdAt ?? undefined,
                             updatedAt: receipt.updatedAt ?? undefined,
