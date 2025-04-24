@@ -1,7 +1,8 @@
 'use client';
 
-import { useFieldArray, UseFormReturn, Path } from 'react-hook-form';
-import { FormValues } from '~/lib/schema';
+import { useFieldArray } from 'react-hook-form';
+import type { UseFormReturn, Path } from 'react-hook-form';
+import type { FormValues } from '~/lib/schema';
 import { Button } from '~/components/ui/button';
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from '~/components/ui/form';
 import { Input } from '~/components/ui/input';
@@ -13,7 +14,6 @@ import { format } from 'date-fns';
 import { cn } from '~/lib/utils';
 import { ACCOUNT_LINES, DEPARTMENTS } from '~/lib/constants';
 import Receipts from './Receipts';
-import { Receipt } from './Receipts';
 
 interface TransactionFormProps {
   form: UseFormReturn<FormValues>;
@@ -30,7 +30,7 @@ export function TransactionForm({
 }: TransactionFormProps) {
   const { control } = form;
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append } = useFieldArray({
     control,
     name: 'transactions',
   });
