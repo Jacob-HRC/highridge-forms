@@ -268,7 +268,7 @@ export async function updateFormWithFiles({
                 // Check if this is an existing transaction (has a positive numeric ID)
                 if (tx.id && typeof tx.id === 'number' && tx.id > 0) {
                     // --- 3.1. Update existing transaction ---
-                    const { receipts: _existingReceipts, newFiles, ...txUpdateData } = txData as {
+                    const { receipts: _, newFiles, ...txUpdateData } = txData as {
                         receipts?: unknown;
                         newFiles?: ReceiptFile[];
                         [key: string]: unknown;
@@ -305,7 +305,7 @@ export async function updateFormWithFiles({
                     console.log('Inserting new transaction');
 
                     // Destructure safely - tx.id might not exist
-                    const { id, receipts: ignoredReceipts, newFiles, ...txInsertData } = tx as {
+                    const { id: _, receipts: __, newFiles, ...txInsertData } = tx as {
                         id?: number;
                         receipts?: unknown;
                         newFiles?: ReceiptFile[];
