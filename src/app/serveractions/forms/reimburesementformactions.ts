@@ -265,7 +265,10 @@ export async function getFormById(formId: number, skipReceipts: boolean = false)
             
             // Debug group results
             Object.keys(receiptsByTransactionId).forEach(txId => {
-                console.log(`Transaction ${txId} has ${receiptsByTransactionId[Number(txId)].length} receipts`);
+                const receiptsForTx = receiptsByTransactionId[Number(txId)];
+                if (receiptsForTx) {
+                    console.log(`Transaction ${txId} has ${receiptsForTx.length} receipts`);
+                }
             });
             
             // Map transactions with their receipts
