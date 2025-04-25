@@ -124,7 +124,7 @@ function FormContent() {
         if (result.success) {
           router.push('/dashboard');
         } else {
-          throw new Error(result.error || 'Failed to submit form');
+          throw new Error(result.error ?? 'Failed to submit form');
         }
       } catch (submitError) {
         console.error("Form submission failed:", submitError);
@@ -192,8 +192,8 @@ function FormContent() {
 
           <TransactionForm form={form} />
 
-          <Button 
-            type="submit" 
+          <Button
+            type="submit"
             className="bg-blue-600 hover:bg-blue-700 text-white"
             disabled={isSubmitting}
           >
