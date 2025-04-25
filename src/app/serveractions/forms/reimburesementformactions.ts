@@ -67,8 +67,11 @@ export async function addForm({
 }) {
     console.log('Server action: adding form', form);
     try {
+        // Remove any provided ID from the form data as we're creating a new record
+        const { id, ...formWithoutId } = form;
+        
         // Validate the form data
-        const validatedForm = reimbursementFormSchema.parse(form);
+        const validatedForm = reimbursementFormSchema.parse(formWithoutId);
         console.log('Validated form data:', validatedForm);
 
         const formEntry = {
@@ -88,12 +91,14 @@ export async function addForm({
             result = await db.insert(forms).values(formEntry);
         } catch (dbError) {
             console.error('Form insert error:', dbError);
-            throw new Error('Failed to insert form');
+            return { success: false, error: `Failed to insert form: ${dbError instanceof Error ? dbError.message : 'Database error'}` };
         }
         console.log('Form insert result:', result);
 
         if (!result?.[0]?.insertId) {
-            throw new Error('No form ID returned from insert');
+            const error = 'No form ID returned from insert';
+            console.error(error);
+            return { success: false, error };
         }
 
         const newFormId = result[0].insertId;
@@ -133,14 +138,23 @@ export async function addForm({
                 }
             } catch (txError) {
                 console.error('Transaction insert error:', txError);
-                throw new Error('Failed to insert transaction');
+                return { 
+                    success: false, 
+                    error: `Failed to insert transaction: ${txError instanceof Error ? txError.message : 'Unknown error'}` 
+                };
             }
         }
 
+        // Revalidate the dashboard page to show the new form
+        revalidatePath('/dashboard');
+        
         return { success: true, formId: newFormId };
     } catch (error) {
-        console.error('Detailed error:', error);
-        throw error;
+        console.error('Detailed form submission error:', error);
+        return { 
+            success: false, 
+            error: `Form submission failed: ${error instanceof Error ? error.message : 'Unknown error'}` 
+        };
     }
 }
 

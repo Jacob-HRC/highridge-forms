@@ -24,7 +24,7 @@ export const transactionSchema = z.object({
 });
 
 export const reimbursementFormSchema = z.object({
-    id: z.number(),
+    id: z.number().optional(), // Make ID optional for new forms
     userId: z.string(),
     formType: z.string(),
     submitterEmail: z.string().email("Invalid email"),

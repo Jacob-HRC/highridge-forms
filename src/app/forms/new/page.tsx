@@ -45,6 +45,7 @@ function FormContent() {
   const form = useForm<FormValues>({
     resolver: zodResolver(reimbursementFormSchema),
     defaultValues: {
+      id: undefined, // ID is now optional in the schema
       userId: user?.id,
       formType,
       submitterEmail: submitterEmail,
@@ -68,7 +69,7 @@ function FormContent() {
     },
   });
 
-  const { control, handleSubmit } = form;
+  const { control, handleSubmit, formState: { isSubmitting } } = form;
 
   // Update the form submission handler
   async function onSubmit(data: FormValues) {
@@ -81,6 +82,13 @@ function FormContent() {
       // Process file uploads and convert to base64
       const processedData = {
         ...data,
+        // Remove any id field - the server will generate it
+        id: undefined,
+        // Ensure userId is properly set
+        userId: user.id,
+        formType,
+        submitterEmail,
+        submitterName,
         transactions: await Promise.all(
           data.transactions.map(async (tx) => {
             // Add proper type checking before accessing .length
@@ -108,24 +116,23 @@ function FormContent() {
 
       console.log('Submitting form data with processed files');
 
-      const result = await addForm({
-        form: {
-          ...processedData,
-          userId: user.id,
-          formType,
-          submitterEmail,
-          submitterName,
-        }
-      });
+      try {
+        const result = await addForm({
+          form: processedData as FormValues
+        });
 
-      if (result.success) {
-        router.push('/dashboard');
-      } else {
-        throw new Error('Failed to submit form');
+        if (result.success) {
+          router.push('/dashboard');
+        } else {
+          throw new Error(result.error || 'Failed to submit form');
+        }
+      } catch (submitError) {
+        console.error("Form submission failed:", submitError);
+        alert(`Form submission failed: ${submitError instanceof Error ? submitError.message : 'Unknown error'}`);
       }
     } catch (error) {
-      console.error("Detailed submission error:", error);
-      alert("There was an error submitting the form.");
+      console.error("Form preparation error:", error);
+      alert(`Error preparing form data: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -185,7 +192,23 @@ function FormContent() {
 
           <TransactionForm form={form} />
 
-          <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">Submit Form</Button>
+          <Button 
+            type="submit" 
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Submitting...
+              </>
+            ) : (
+              'Submit Form'
+            )}
+          </Button>
         </form>
       </Form>
     </div>

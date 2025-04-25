@@ -101,16 +101,31 @@ export default function Receipts<T extends FieldValues = FieldValues>({
                                         <FormControl>
                                             <Input
                                                 type="file"
-                                                multiple
+                                                multiple={receipts.length < 1} // Allow multiple only if there are no receipts yet
                                                 accept="image/*,.pdf"
+                                                disabled={receipts.length >= 2} // Disable if already have 2 receipts
                                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                                                     if (e.target.files) {
+                                                        // Validate file count
+                                                        const totalFiles = receipts.length + e.target.files.length;
+                                                        if (totalFiles > 2) {
+                                                            alert(`You can only upload up to 2 receipts per transaction. You've selected ${e.target.files.length} file(s), but you already have ${receipts.length} receipt(s).`);
+                                                            e.target.value = ''; // Clear selection
+                                                            return;
+                                                        }
+                                                        
                                                         field.onChange(e.target.files);
                                                     }
                                                 }}
+                                                className={receipts.length >= 2 ? "opacity-50 cursor-not-allowed" : ""}
                                             />
                                         </FormControl>
                                         <FormMessage />
+                                        {receipts.length >= 2 && (
+                                            <p className="text-amber-400 text-sm mt-1">
+                                                Maximum number of receipts (2) reached. Delete an existing receipt to upload a new one.
+                                            </p>
+                                        )}
                                     </FormItem>
                                 )}
                             />
