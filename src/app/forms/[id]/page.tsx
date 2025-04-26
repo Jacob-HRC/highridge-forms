@@ -38,7 +38,7 @@ async function fileToBase64(file: File): Promise<string> {
         };
         reader.onerror = (error) => {
             console.error('FileReader error:', error);
-            reject(error);
+            reject(new Error(`FileReader error: ${error instanceof Error ? error.message : String(error)}`));
         };
         reader.readAsDataURL(file);
     });
@@ -312,7 +312,7 @@ export default function EditFormPage() {
             const transactionsWithFiles = await Promise.all(
                 formData.transactions.map(async (tx) => {
                     // Ensure we have a proper Date object for the date
-                    let txDate = tx.date;
+                    const txDate = tx.date;
 
                     // Check if there are files to process
                     if (!tx.newFiles) {
@@ -328,25 +328,38 @@ export default function EditFormPage() {
                     if (tx.newFiles instanceof FileList || (Array.isArray(tx.newFiles) && tx.newFiles[0] instanceof File)) {
                         // It's a FileList, needs conversion to base64
                         console.log("Processing FileList for transaction:", tx.id);
-                        const fileList = Array.isArray(tx.newFiles) ? tx.newFiles : Array.from(tx.newFiles);
+                        // Ensure proper typing for fileList
+                        const fileList = Array.isArray(tx.newFiles)
+                            ? tx.newFiles as File[]
+                            : Array.from(tx.newFiles as FileList);
 
                         try {
                             processedFiles = await Promise.all(
                                 fileList.map(async (file, index) => {
-                                    console.log(`Processing file ${index + 1}/${fileList.length}: ${file.name} (${file.type})`);
+                                    // Type guard to ensure file is a proper File object
+                                    if (!(file instanceof File)) {
+                                        throw new Error('Invalid file object: not a File instance');
+                                    }
+
+                                    // Safe access to file properties with type assertions
+                                    const fileName = file.name as string;
+                                    const fileType = file.type as string;
+
+                                    console.log(`Processing file ${index + 1}/${fileList.length}: ${fileName} (${fileType})`);
 
                                     // Get base64 content with explicit error handling
                                     try {
-                                        const base64Content = await fileToBase64(file);
+                                        // Ensure file is properly typed before passing to fileToBase64
+                                        const base64Content = await fileToBase64(file as File);
                                         // Verify the base64 content is not empty
                                         if (!base64Content) {
-                                            throw new Error(`Empty base64 content for file: ${file.name}`);
+                                            throw new Error(`Empty base64 content for file: ${fileName}`);
                                         }
-                                        console.log(`Successfully converted ${file.name} to base64 (length: ${base64Content.length})`);
+                                        console.log(`Successfully converted ${fileName} to base64 (length: ${base64Content.length})`);
 
                                         return {
-                                            name: file.name,
-                                            type: file.type,
+                                            name: fileName,
+                                            type: fileType,
                                             base64Content: base64Content,
                                             createdAt: new Date(),
                                             updatedAt: new Date()
@@ -367,7 +380,13 @@ export default function EditFormPage() {
                         console.log("Validating pre-processed files for transaction:", tx.id);
 
                         for (const file of tx.newFiles) {
-                            if (!file.name || !file.type || !file.base64Content) {
+                            // Type guard for file properties
+                            if (typeof file !== 'object' || file === null) {
+                                throw new Error("Invalid file object: not an object");
+                            }
+
+                            // Safe property access with type checking
+                            if (!('name' in file) || !('type' in file) || !('base64Content' in file)) {
                                 console.error("Invalid file object:", file);
                                 throw new Error("Invalid file object: missing required properties");
                             }
