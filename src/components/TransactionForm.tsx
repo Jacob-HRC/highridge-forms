@@ -68,7 +68,7 @@ export function TransactionForm({
       {fields.map((fieldItem, index) => (
         <div
           key={fieldItem.id}
-          className="relative bg-gray-800 text-gray-100 rounded-lg border border-gray-600 shadow-lg p-6 mb-8 space-y-6 hover:border-gray-500 transition-colors"
+          className="relative bg-gray-800 text-gray-100 rounded-lg border border-gray-600 shadow-lg p-6 pt-12 mb-8 space-y-6 hover:border-gray-500 transition-colors"
         >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField
@@ -298,7 +298,7 @@ export function TransactionForm({
             <Button
               type="button"
               variant="outline"
-              className="absolute top-4 right-4 text-destructive hover:text-white hover:bg-blue-600/90 transition-colors"
+              className="absolute top-2 right-4 text-destructive hover:text-white hover:bg-blue-600/90 transition-colors"
               onClick={() => onRemoveTransaction(index)}
             >
               Remove
