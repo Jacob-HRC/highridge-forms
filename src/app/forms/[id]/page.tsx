@@ -366,8 +366,8 @@ export default function EditFormPage() {
                                             updatedAt: new Date()
                                         };
                                     } catch (error) {
-                                        console.error(`Error converting file to base64: ${error}`);
                                         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                                        console.error(`Error converting file to base64: ${errorMessage}`);
                                         throw new Error(`Failed to process file ${file.name}: ${errorMessage}`);
                                     }
                                 })
