@@ -37,8 +37,8 @@ async function fileToBase64(file: File): Promise<string> {
             resolve(result);
         };
         reader.onerror = (error) => {
-            console.error('FileReader error:', error);
             const errorMessage = error instanceof Error ? error.message : String(error);
+            console.error('FileReader error:', errorMessage);
             reject(new Error(`FileReader error: ${errorMessage}`));
         };
         reader.readAsDataURL(file);
