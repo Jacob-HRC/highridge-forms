@@ -1,4 +1,4 @@
-import { text, singlestoreTable, bigint, timestamp, date, float, varchar, longtext } from "drizzle-orm/singlestore-core";
+import { text, singlestoreTable, bigint, timestamp, float, varchar, longtext } from "drizzle-orm/singlestore-core";
 
 /**
  * "forms" table:

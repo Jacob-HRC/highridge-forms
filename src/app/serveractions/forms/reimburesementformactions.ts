@@ -744,7 +744,7 @@ export async function updateFormWithFiles({
         console.error('Error updating form with files (server action):', error);
 
         // Create a structured error response
-        let errorResponse: {
+        const errorResponse: {
             success: false;
             error: string;
             details?: unknown;
