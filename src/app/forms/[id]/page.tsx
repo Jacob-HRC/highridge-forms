@@ -38,7 +38,7 @@ async function fileToBase64(file: File): Promise<string> {
         };
         reader.onerror = (error) => {
             console.error('FileReader error:', error);
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            const errorMessage = error instanceof Error ? error.message : String(error);
             reject(new Error(`FileReader error: ${errorMessage}`));
         };
         reader.readAsDataURL(file);
@@ -118,7 +118,7 @@ export default function EditFormPage() {
                                                 console.log('Parsed date from string:', tx.date, 'to UTC Date:', txDate.toISOString());
                                             } else {
                                                 // Fallback if parts aren't valid numbers
-                                                const tempDate = new Date(tx.date as string);
+                                                const tempDate = new Date(tx.date);
                                                 txDate = new Date(Date.UTC(
                                                     tempDate.getUTCFullYear(),
                                                     tempDate.getUTCMonth(),
@@ -129,7 +129,7 @@ export default function EditFormPage() {
                                             }
                                         } else {
                                             // Not in expected format, use regular date parsing with UTC
-                                            const tempDate = new Date(tx.date as string);
+                                            const tempDate = new Date(tx.date);
                                             txDate = new Date(Date.UTC(
                                                 tempDate.getUTCFullYear(),
                                                 tempDate.getUTCMonth(),
@@ -140,7 +140,7 @@ export default function EditFormPage() {
                                         }
                                     } else {
                                         // Otherwise handle as before but using UTC
-                                        const tempDate = new Date(tx.date as string);
+                                        const tempDate = new Date(tx.date);
                                         const year = tempDate.getUTCFullYear();
                                         const month = tempDate.getUTCMonth();
                                         const day = tempDate.getUTCDate();
@@ -332,7 +332,7 @@ export default function EditFormPage() {
                         // Ensure proper typing for fileList
                         const fileList = Array.isArray(tx.newFiles)
                             ? tx.newFiles as File[]
-                            : Array.from(tx.newFiles as FileList);
+                            : Array.from(tx.newFiles);
 
                         try {
                             processedFiles = await Promise.all(
