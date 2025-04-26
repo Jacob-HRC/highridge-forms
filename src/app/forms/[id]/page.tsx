@@ -88,7 +88,7 @@ export default function EditFormPage() {
                         formId: fetchedData.form.id,
                         transactionCount: fetchedData.transactions.length
                     });
-                    
+
                     const initialFormData: FormValues = {
                         id: fetchedData.form.id,
                         userId: fetchedData.form.userId,
@@ -110,7 +110,9 @@ export default function EditFormPage() {
                                         const parts = tx.date.split('-');
                                         if (parts.length === 3) {
                                             const [year, month, day] = parts.map(Number);
-                                            if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+                                            // Check if all values are valid numbers (not NaN and not undefined)
+                                            if (year !== undefined && month !== undefined && day !== undefined &&
+                                                !isNaN(year) && !isNaN(month) && !isNaN(day)) {
                                                 // Create a date object in UTC
                                                 txDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
                                                 console.log('Parsed date from string:', tx.date, 'to UTC Date:', txDate.toISOString());
@@ -143,7 +145,7 @@ export default function EditFormPage() {
                                         const month = tempDate.getUTCMonth();
                                         const day = tempDate.getUTCDate();
                                         txDate = new Date(Date.UTC(year, month, day, 12, 0, 0));
-                                        
+
                                         console.log('Converted date with UTC:', tx.date, 'to Date:', txDate.toISOString());
                                     }
                                 } else {
@@ -151,10 +153,10 @@ export default function EditFormPage() {
                                     txDate = new Date();
                                     console.log('Using default date:', txDate);
                                 }
-                                
+
                                 // Store the original string format for later use
                                 const dateString = typeof tx.date === 'string' ? tx.date : null;
-                                
+
                                 console.log('Date info:', {
                                     original: tx.date,
                                     dateString: dateString,
@@ -165,7 +167,7 @@ export default function EditFormPage() {
                                 console.error('Error parsing date:', tx.date, dateError);
                                 txDate = new Date();
                             }
-                            
+
                             return {
                                 ...tx,
                                 createdAt: tx.createdAt ? new Date(tx.createdAt) : new Date(),
@@ -176,13 +178,13 @@ export default function EditFormPage() {
                                 accountLine: tx.accountLine,
                                 department: tx.department,
                                 placeVendor: tx.placeVendor,
-                                description: tx.description || "",
+                                description: tx.description ?? "",
                                 amount: tx.amount,
                                 newFiles: [],
                             };
                         }),
                     };
-                    
+
                     console.log("Resetting form with initial data");
                     reset(initialFormData);
                 } else {
@@ -202,22 +204,22 @@ export default function EditFormPage() {
     // Step 2: After initial form data loads, fetch receipts in a separate request
     useEffect(() => {
         async function loadReceipts() {
-            if (formMetaLoading || error) return; // Skip if we're still loading form data or if there was an error
-            
+            if (formMetaLoading ?? error) return; // Skip if we're still loading form data or if there was an error
+
             setReceiptsLoading(true);
             console.log('Loading receipts for form:', formId);
-            
+
             try {
                 // Now load the complete form data with receipts
                 const fullFormData = await getFormById(formId, false);
                 if (fullFormData) {
-                    console.log('Received form data with receipts:', 
+                    console.log('Received form data with receipts:',
                         fullFormData.transactions.map(tx => ({
                             txId: tx.transactionId,
-                            receiptCount: tx.receipts?.length || 0
+                            receiptCount: tx.receipts?.length ?? 0
                         }))
                     );
-                    
+
                     // Update only the receipts in the form
                     const currentValues = form.getValues();
                     const transactionsWithReceipts = currentValues.transactions.map((tx) => {
@@ -247,7 +249,7 @@ export default function EditFormPage() {
                         }
                         return tx;
                     });
-                    
+
                     console.log('Setting form transactions with receipts');
                     // Only update the transactions field to avoid re-rendering the entire form
                     form.setValue('transactions', transactionsWithReceipts);
@@ -261,7 +263,7 @@ export default function EditFormPage() {
                 setReceiptsLoading(false);
             }
         }
-        
+
         void loadReceipts();
     }, [formMetaLoading, error, formId, form]);
 
@@ -270,11 +272,11 @@ export default function EditFormPage() {
         try {
             setIsSubmitting(true);
             setError(null);
-            
+
             // Get form data from form state
             const formData = form.getValues();
             console.log('Form data to save:', formData);
-            
+
             // Debug transactions and files
             formData.transactions.forEach((tx, index) => {
                 console.log(`Transaction ${index}:`, {
@@ -282,36 +284,36 @@ export default function EditFormPage() {
                     date: tx.date,
                     amount: tx.amount,
                     description: tx.description,
-                    receiptsCount: tx.receipts?.length || 0,
+                    receiptsCount: tx.receipts?.length ?? 0,
                     hasNewFiles: tx.newFiles ? 'yes' : 'no',
                     newFilesType: tx.newFiles ? (
-                        tx.newFiles instanceof FileList ? 'FileList' : 
-                        Array.isArray(tx.newFiles) ? 'Array' : 
-                        typeof tx.newFiles
+                        tx.newFiles instanceof FileList ? 'FileList' :
+                            Array.isArray(tx.newFiles) ? 'Array' :
+                                typeof tx.newFiles
                     ) : 'none',
                     newFilesCount: tx.newFiles ? (
-                        tx.newFiles instanceof FileList ? tx.newFiles.length : 
-                        Array.isArray(tx.newFiles) ? tx.newFiles.length : 
-                        'unknown'
+                        tx.newFiles instanceof FileList ? tx.newFiles.length :
+                            Array.isArray(tx.newFiles) ? tx.newFiles.length :
+                                'unknown'
                     ) : 0
                 });
             });
-            
+
             // Make sure we're using Date objects consistently
             console.log('Form data date check before processing:', formData.transactions.map(tx => ({
                 id: tx.id,
-                date: tx.date instanceof Date 
-                    ? `${tx.date.getFullYear()}-${tx.date.getMonth()+1}-${tx.date.getDate()}` 
+                date: tx.date instanceof Date
+                    ? `${tx.date.getFullYear()}-${tx.date.getMonth() + 1}-${tx.date.getDate()}`
                     : tx.date,
                 dateType: typeof tx.date
             })));
-            
+
             // Process file uploads and convert to base64
             const transactionsWithFiles = await Promise.all(
                 formData.transactions.map(async (tx) => {
                     // Ensure we have a proper Date object for the date
                     let txDate = tx.date;
-                    
+
                     // Check if there are files to process
                     if (!tx.newFiles) {
                         return {
@@ -319,20 +321,20 @@ export default function EditFormPage() {
                             date: txDate // Ensure we're returning the original Date object
                         };
                     }
-                    
+
                     // Different handling depending on whether we have a FileList or already processed files
                     let processedFiles = [];
-                    
+
                     if (tx.newFiles instanceof FileList || (Array.isArray(tx.newFiles) && tx.newFiles[0] instanceof File)) {
                         // It's a FileList, needs conversion to base64
                         console.log("Processing FileList for transaction:", tx.id);
                         const fileList = Array.isArray(tx.newFiles) ? tx.newFiles : Array.from(tx.newFiles);
-                        
+
                         try {
                             processedFiles = await Promise.all(
                                 fileList.map(async (file, index) => {
                                     console.log(`Processing file ${index + 1}/${fileList.length}: ${file.name} (${file.type})`);
-                                    
+
                                     // Get base64 content with explicit error handling
                                     try {
                                         const base64Content = await fileToBase64(file);
@@ -341,7 +343,7 @@ export default function EditFormPage() {
                                             throw new Error(`Empty base64 content for file: ${file.name}`);
                                         }
                                         console.log(`Successfully converted ${file.name} to base64 (length: ${base64Content.length})`);
-                                        
+
                                         return {
                                             name: file.name,
                                             type: file.type,
@@ -363,17 +365,17 @@ export default function EditFormPage() {
                     } else if (Array.isArray(tx.newFiles) && tx.newFiles.length > 0) {
                         // It's already processed files with base64Content, just validate
                         console.log("Validating pre-processed files for transaction:", tx.id);
-                        
+
                         for (const file of tx.newFiles) {
                             if (!file.name || !file.type || !file.base64Content) {
                                 console.error("Invalid file object:", file);
                                 throw new Error("Invalid file object: missing required properties");
                             }
                         }
-                        
+
                         processedFiles = tx.newFiles;
                     }
-                    
+
                     // Return transaction with processed files
                     console.log(`Processed ${processedFiles.length} files for transaction ${tx.id}`);
                     return {
@@ -383,29 +385,29 @@ export default function EditFormPage() {
                     };
                 })
             );
-            
+
             // Update form data with processed files and deleted transaction IDs
             const processedFormData = {
                 ...formData,
                 transactions: transactionsWithFiles,
                 deletedTransactionIds: deletedTransactionIds
             };
-            
+
             console.log('Processed form data ready for submission:', processedFormData);
-            
+
             // Call the server action to update the form
             const result = await updateFormWithFiles({
                 id: formId,
                 form: processedFormData
             });
-            
+
             console.log('Form update result:', result);
-            
+
             if (result.success) {
                 // Show success message and exit edit mode
                 alert('Form saved successfully!');
                 setIsEditing(false);
-                
+
                 // Refresh the form data with the updated data
                 if (result.form && result.transactions) {
                     const refreshedFormData = {
@@ -418,25 +420,25 @@ export default function EditFormPage() {
                             accountLine: tx.accountLine,
                             department: tx.department,
                             placeVendor: tx.placeVendor,
-                            description: tx.description || "",
+                            description: tx.description ?? "",
                             amount: tx.amount,
-                            receipts: tx.receipts || [],
+                            receipts: tx.receipts ?? [],
                             newFiles: []
                         }))
                     };
-                    
+
                     // Reset form with fresh data
                     reset(refreshedFormData as FormValues);
-                    
+
                     // Clear deleted transactions list
                     setDeletedTransactionIds([]);
                 }
             } else {
                 // If the server returned an error, display it
-                let errorMessage = result.error || 'Failed to save form';
-                
+                let errorMessage = result.error ?? 'Failed to save form';
+
                 // Check if there are more detailed error information
-                if (result.details) {
+                if ('details' in result && result.details) {
                     console.error('Detailed server error:', result.details);
                     if (result.details instanceof Error) {
                         errorMessage += `: ${result.details.message}`;
@@ -450,7 +452,7 @@ export default function EditFormPage() {
                         }
                     }
                 }
-                
+
                 setError(errorMessage);
                 console.error('Form save error:', errorMessage);
                 throw new Error(errorMessage);
@@ -505,7 +507,7 @@ export default function EditFormPage() {
                         accountLine: tx.accountLine,
                         department: tx.department,
                         placeVendor: tx.placeVendor,
-                        description: tx.description || "",
+                        description: tx.description ?? "",
                         amount: tx.amount,
                         receipts: tx.receipts?.map((receipt: {
                             id: number;
@@ -549,7 +551,7 @@ export default function EditFormPage() {
             <Skeleton className="h-10 w-full" />
         </div>
     );
-    
+
     // Create a skeleton for the transaction card
     const TransactionSkeleton = () => (
         <div className="bg-gray-800 rounded-lg border border-gray-600 shadow-lg p-6 mb-8 space-y-6">
@@ -582,8 +584,8 @@ export default function EditFormPage() {
                     <div className="text-red-400 p-4 bg-red-900/20 rounded-lg border border-red-700">
                         <h3 className="text-xl font-semibold mb-2">Error Loading Form</h3>
                         <p>{error}</p>
-                        <Button 
-                            className="mt-4 bg-blue-600 hover:bg-blue-700" 
+                        <Button
+                            className="mt-4 bg-blue-600 hover:bg-blue-700"
                             onClick={() => router.push('/dashboard')}
                         >
                             Return to Dashboard
@@ -620,16 +622,16 @@ export default function EditFormPage() {
                                 </div>
                             </div>
                         </div>
-                        
+
                         {/* Form with submission handler */}
-                        <form 
-                            id="form" 
+                        <form
+                            id="form"
                             onSubmit={(e) => {
                                 e.preventDefault();
                                 if (isEditing && !isSubmitting) {
                                     void handleSaveChanges();
                                 }
-                            }} 
+                            }}
                             className="space-y-6"
                         >
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -697,7 +699,7 @@ export default function EditFormPage() {
                                         onDeleteReceipt={handleDeleteReceipt}
                                         isLoadingReceipts={receiptsLoading}
                                     />
-                                    
+
                                     {receiptsLoading && (
                                         <div className="mt-4 p-3 bg-gray-700/30 rounded-md text-center">
                                             <div className="animate-pulse flex items-center justify-center space-x-2">
@@ -708,7 +710,7 @@ export default function EditFormPage() {
                                     )}
                                 </>
                             )}
-                            
+
                             <div className="flex justify-between mt-6">
                                 <Button
                                     type="button"
@@ -735,7 +737,7 @@ export default function EditFormPage() {
                                         </Button>
                                     </div>
                                 )}
-                                
+
                                 {/* Show any form submission errors */}
                                 {error && isEditing && (
                                     <div className="mt-4 p-3 bg-red-900/30 text-red-300 border border-red-700 rounded-md">

@@ -87,29 +87,29 @@ export function TransactionForm({
                             !field.value && "text-muted-foreground"
                           )}
                         >
-                          {field.value ? 
+                          {field.value ?
                             (() => {
                               // Format with UTC date components to avoid timezone issues
                               let dateToFormat: Date;
-                              
+
                               if (field.value instanceof Date) {
                                 dateToFormat = field.value;
                               } else {
                                 // Parse string to date
                                 dateToFormat = new Date(String(field.value));
                               }
-                              
+
                               // Create a date object that won't shift due to timezone
                               const utcYear = dateToFormat.getUTCFullYear();
                               const utcMonth = dateToFormat.getUTCMonth();
                               const utcDay = dateToFormat.getUTCDate();
-                              
+
                               // Create a new date with these components at noon UTC
                               const stableDate = new Date(Date.UTC(utcYear, utcMonth, utcDay, 12, 0, 0));
-                              
+
                               return format(stableDate, "PPP");
                             })()
-                           : 
+                            :
                             <span>Pick a date</span>
                           }
                           <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
@@ -127,10 +127,10 @@ export function TransactionForm({
                             const year = date.getUTCFullYear();
                             const month = date.getUTCMonth();
                             const day = date.getUTCDate();
-                            
+
                             // Create a new UTC date at noon
                             const utcDate = new Date(Date.UTC(year, month, day, 12, 0, 0));
-                            
+
                             console.log('Calendar date selected:', {
                               originalDate: date.toISOString(),
                               utcDate: utcDate.toISOString(),

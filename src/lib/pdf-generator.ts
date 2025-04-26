@@ -50,7 +50,7 @@ export async function generateFormPdf(formData: FormData): Promise<Uint8Array> {
         console.log("Starting PDF generation with data:", JSON.stringify({
             formId: formData.form?.id,
             formType: formData.form?.formType,
-            transactionCount: formData.transactions?.length || 0
+            transactionCount: formData.transactions?.length ?? 0
         }));
 
         // Validate input data structure to catch issues early
@@ -170,23 +170,23 @@ export async function generateFormPdf(formData: FormData): Promise<Uint8Array> {
             addText(`Date: ${formatDate(transaction.date)}`, margin + 10, yPos, 10);
             yPos -= smallLineHeight;
 
-            addText(`Account Line: ${transaction.accountLine || 'Not specified'}`, margin + 10, yPos, 10);
+            addText(`Account Line: ${transaction.accountLine ?? 'Not specified'}`, margin + 10, yPos, 10);
             yPos -= smallLineHeight;
 
-            addText(`Department: ${transaction.department || 'Not specified'}`, margin + 10, yPos, 10);
+            addText(`Department: ${transaction.department ?? 'Not specified'}`, margin + 10, yPos, 10);
             yPos -= smallLineHeight;
 
-            addText(`Place/Vendor: ${transaction.placeVendor || 'Not specified'}`, margin + 10, yPos, 10);
+            addText(`Place/Vendor: ${transaction.placeVendor ?? 'Not specified'}`, margin + 10, yPos, 10);
             yPos -= smallLineHeight;
 
-            addText(`Amount: $${(transaction.amount || 0).toFixed(2)}`, margin + 10, yPos, 10);
+            addText(`Amount: $${(transaction.amount ?? 0).toFixed(2)}`, margin + 10, yPos, 10);
             yPos -= smallLineHeight;
 
             // Description might wrap, so we'll handle it differently
             addText('Description:', margin + 10, yPos, 10, boldFont);
             yPos -= smallLineHeight;
 
-            const description = transaction.description || 'No description provided';
+            const description = transaction.description ?? 'No description provided';
             addText(description, margin + 20, yPos, 10);
             yPos -= lineHeight * 1.5;
 
@@ -231,7 +231,7 @@ export async function generateFormPdf(formData: FormData): Promise<Uint8Array> {
                             let image: PDFImage | undefined;
                             if (receipt.fileType.includes('png')) {
                                 image = await pdfDoc.embedPng(base64Data);
-                            } else if (receipt.fileType.includes('jpg') || receipt.fileType.includes('jpeg')) {
+                            } else if (receipt.fileType.includes('jpg') ?? receipt.fileType.includes('jpeg')) {
                                 image = await pdfDoc.embedJpg(base64Data);
                             }
 
@@ -306,7 +306,7 @@ export async function generateFormPdf(formData: FormData): Promise<Uint8Array> {
                                 yPos -= smallLineHeight;
                             }
                         } else {
-                            addText(`${receipt.name} (${receipt.fileType || 'Unknown type'})`, margin + 20, yPos, 10);
+                            addText(`${receipt.name} (${receipt.fileType ?? 'Unknown type'})`, margin + 20, yPos, 10);
                             yPos -= smallLineHeight;
                         }
                     } catch (receiptError) {
