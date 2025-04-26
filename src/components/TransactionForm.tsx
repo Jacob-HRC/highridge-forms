@@ -86,6 +86,7 @@ export function TransactionForm({
                             "w-full pl-3 text-left font-normal bg-gray-700 border-gray-600 hover:bg-blue-600/50 hover:border-blue-500",
                             !field.value && "text-muted-foreground"
                           )}
+                          disabled={!isEditing}
                         >
                           {field.value ?
                             (() => {
@@ -171,6 +172,7 @@ export function TransactionForm({
                       className="text-right bg-gray-700 border-gray-600 hover:border-gray-500 focus:border-gray-400 text-gray-100"
                       {...field}
                       onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                      disabled={!isEditing}
                     />
                   </FormControl>
                   <FormMessage />
@@ -190,6 +192,7 @@ export function TransactionForm({
                     <Select
                       value={field.value}
                       onValueChange={field.onChange}
+                      disabled={!isEditing}
                     >
                       <SelectTrigger className="w-full bg-gray-800 border-gray-700 hover:border-blue-500 hover:bg-blue-600/20 text-gray-100">
                         <SelectValue placeholder="Select account line" />
@@ -218,6 +221,7 @@ export function TransactionForm({
                     <Select
                       value={field.value}
                       onValueChange={field.onChange}
+                      disabled={!isEditing}
                     >
                       <SelectTrigger className="w-full bg-gray-800 border-gray-700 hover:border-gray-600 text-gray-100">
                         <SelectValue placeholder="Select department" />
@@ -245,7 +249,7 @@ export function TransactionForm({
                 <FormItem>
                   <FormLabel className="text-sm font-medium">Place/Vendor</FormLabel>
                   <FormControl>
-                    <Input {...field} />
+                    <Input {...field} disabled={!isEditing} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -262,6 +266,7 @@ export function TransactionForm({
                     <Input
                       className="bg-gray-800 border-gray-700 hover:border-gray-600 focus:border-gray-500 text-gray-100"
                       {...field}
+                      disabled={!isEditing}
                     />
                   </FormControl>
                   <FormMessage />

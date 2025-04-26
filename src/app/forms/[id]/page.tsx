@@ -55,7 +55,7 @@ export default function EditFormPage() {
     const [receiptsLoading, setReceiptsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [isEditing, setIsEditing] = useState(false);
+    const [isEditing, setIsEditing] = useState(false); // Default to viewing mode, not editing
     const formId = Number(params.id); // Get the form ID from the URL params, assuming it's a number
 
     // Use deletedTransactionIds to track transactions to be deleted on save
