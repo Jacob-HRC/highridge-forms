@@ -38,7 +38,8 @@ async function fileToBase64(file: File): Promise<string> {
         };
         reader.onerror = (error) => {
             console.error('FileReader error:', error);
-            reject(new Error(`FileReader error: ${error instanceof Error ? error.message : String(error)}`));
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            reject(new Error(`FileReader error: ${errorMessage}`));
         };
         reader.readAsDataURL(file);
     });
@@ -111,14 +112,13 @@ export default function EditFormPage() {
                                         if (parts.length === 3) {
                                             const [year, month, day] = parts.map(Number);
                                             // Check if all values are valid numbers (not NaN and not undefined)
-                                            if (year !== undefined && month !== undefined && day !== undefined &&
-                                                !isNaN(year) && !isNaN(month) && !isNaN(day)) {
+                                            if (typeof year === 'number' && typeof month === 'number' && typeof day === 'number' && !isNaN(year) && !isNaN(month) && !isNaN(day)) {
                                                 // Create a date object in UTC
                                                 txDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
                                                 console.log('Parsed date from string:', tx.date, 'to UTC Date:', txDate.toISOString());
                                             } else {
                                                 // Fallback if parts aren't valid numbers
-                                                const tempDate = new Date(tx.date);
+                                                const tempDate = new Date(tx.date as string);
                                                 txDate = new Date(Date.UTC(
                                                     tempDate.getUTCFullYear(),
                                                     tempDate.getUTCMonth(),
@@ -129,7 +129,7 @@ export default function EditFormPage() {
                                             }
                                         } else {
                                             // Not in expected format, use regular date parsing with UTC
-                                            const tempDate = new Date(tx.date);
+                                            const tempDate = new Date(tx.date as string);
                                             txDate = new Date(Date.UTC(
                                                 tempDate.getUTCFullYear(),
                                                 tempDate.getUTCMonth(),
@@ -140,7 +140,7 @@ export default function EditFormPage() {
                                         }
                                     } else {
                                         // Otherwise handle as before but using UTC
-                                        const tempDate = new Date(tx.date);
+                                        const tempDate = new Date(tx.date as string);
                                         const year = tempDate.getUTCFullYear();
                                         const month = tempDate.getUTCMonth();
                                         const day = tempDate.getUTCDate();
@@ -192,7 +192,8 @@ export default function EditFormPage() {
                 }
             } catch (e) {
                 console.error('Error fetching form metadata:', e);
-                setError(`Error loading form: ${e instanceof Error ? e.message : 'Unknown error'}`);
+                const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+                setError(`Error loading form: ${errorMessage}`);
             } finally {
                 setFormMetaLoading(false);
             }
@@ -342,15 +343,15 @@ export default function EditFormPage() {
                                     }
 
                                     // Safe access to file properties with type assertions
-                                    const fileName = file.name as string;
-                                    const fileType = file.type as string;
+                                    const fileName = file.name;
+                                    const fileType = file.type;
 
                                     console.log(`Processing file ${index + 1}/${fileList.length}: ${fileName} (${fileType})`);
 
                                     // Get base64 content with explicit error handling
                                     try {
                                         // Ensure file is properly typed before passing to fileToBase64
-                                        const base64Content = await fileToBase64(file as File);
+                                        const base64Content = await fileToBase64(file);
                                         // Verify the base64 content is not empty
                                         if (!base64Content) {
                                             throw new Error(`Empty base64 content for file: ${fileName}`);
@@ -366,13 +367,15 @@ export default function EditFormPage() {
                                         };
                                     } catch (error) {
                                         console.error(`Error converting file to base64: ${error}`);
-                                        throw new Error(`Failed to process file ${file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                                        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                                        throw new Error(`Failed to process file ${file.name}: ${errorMessage}`);
                                     }
                                 })
                             );
                         } catch (error) {
                             console.error(`Error processing files for transaction ${tx.id}:`, error);
-                            setError(`Error processing files: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                            setError(`Error processing files: ${errorMessage}`);
                             throw error;
                         }
                     } else if (Array.isArray(tx.newFiles) && tx.newFiles.length > 0) {
@@ -464,9 +467,9 @@ export default function EditFormPage() {
                     } else if (typeof result.details === 'object') {
                         // Try to extract useful info from error object
                         const detailsObj = result.details as Record<string, unknown>;
-                        if (detailsObj.sqlMessage) {
+                        if ('sqlMessage' in detailsObj && typeof detailsObj.sqlMessage === 'string') {
                             errorMessage += `: Database error - ${detailsObj.sqlMessage}`;
-                        } else if (detailsObj.message) {
+                        } else if ('message' in detailsObj && typeof detailsObj.message === 'string') {
                             errorMessage += `: ${detailsObj.message}`;
                         }
                     }
