@@ -37,7 +37,10 @@ async function fileToBase64(file: File): Promise<string> {
             resolve(result);
         };
         reader.onerror = (error) => {
-            const errorMessage = error instanceof Error ? error.message : String(error);
+            // Properly handle the error object to avoid @typescript-eslint/no-base-to-string error
+            // by explicitly checking the type and extracting the message
+            const errorMessage = error instanceof Error ? error.message :
+                typeof error === 'object' ? JSON.stringify(error) : String(error);
             console.error('FileReader error:', errorMessage);
             reject(new Error(`FileReader error: ${errorMessage}`));
         };

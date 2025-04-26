@@ -129,4 +129,5 @@ When working with this project, the AI assistant should:
 8. Document complex logic with clear comments
 9. Suggest performance optimizations when appropriate
 10. Respect the separation of concerns between client and server components
+11. Use nullish coalescing instead of logical OR (`||`) when possible.
  
