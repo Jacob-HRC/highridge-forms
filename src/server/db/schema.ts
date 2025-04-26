@@ -42,7 +42,8 @@ export const transactions = singlestoreTable("highridgeforms_transactions", {
   // Link back to the parent form
   formId: bigint("form_id", { mode: "number" }).notNull(),
 
-  date: date("date").notNull(),
+  // Use varchar instead of date to prevent any timezone conversion issues
+  date: varchar("date", { length: 10 }).notNull(), // Store as YYYY-MM-DD string
   accountLine: text("account_line").notNull(),
   department: text("department").notNull(),
   placeVendor: text("place_vendor").notNull(),

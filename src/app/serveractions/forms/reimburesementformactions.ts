@@ -69,7 +69,7 @@ export async function addForm({
     try {
         // Remove any provided ID from the form data as we're creating a new record
         const { id, ...formWithoutId } = form;
-        
+
         // Validate the form data
         const validatedForm = reimbursementFormSchema.parse(formWithoutId);
         console.log('Validated form data:', validatedForm);
@@ -107,12 +107,34 @@ export async function addForm({
         for (const tx of validatedForm.transactions) {
             console.log('Inserting transaction:', tx);
             try {
+                // Format the date properly for new forms too
+                let txDateString: string;
+                if (tx.date instanceof Date) {
+                    // Use UTC methods to prevent timezone shifts
+                    const year = tx.date.getUTCFullYear();
+                    const month = String(tx.date.getUTCMonth() + 1).padStart(2, '0');
+                    const day = String(tx.date.getUTCDate()).padStart(2, '0');
+                    txDateString = `${year}-${month}-${day}`;
+                } else if (typeof tx.date === 'string') {
+                    txDateString = tx.date;
+                } else {
+                    // Default to today
+                    const today = new Date();
+                    const year = today.getFullYear();
+                    const month = String(today.getMonth() + 1).padStart(2, '0');
+                    const day = String(today.getDate()).padStart(2, '0');
+                    txDateString = `${year}-${month}-${day}`;
+                }
+
+                console.log('Initial form transaction date:', {
+                    original: tx.date,
+                    converted: txDateString
+                });
+
                 const txResult = await db.insert(transactions)
                     .values({
                         formId: newFormId,
-                        date: tx.date,
-                        createdAt: tx.createdAt,
-                        updatedAt: tx.updatedAt,
+                        date: txDateString, // Use the string date
                         accountLine: tx.accountLine,
                         department: tx.department,
                         placeVendor: tx.placeVendor,
@@ -138,22 +160,22 @@ export async function addForm({
                 }
             } catch (txError) {
                 console.error('Transaction insert error:', txError);
-                return { 
-                    success: false, 
-                    error: `Failed to insert transaction: ${txError instanceof Error ? txError.message : 'Unknown error'}` 
+                return {
+                    success: false,
+                    error: `Failed to insert transaction: ${txError instanceof Error ? txError.message : 'Unknown error'}`
                 };
             }
         }
 
         // Revalidate the dashboard page to show the new form
         revalidatePath('/dashboard');
-        
+
         return { success: true, formId: newFormId };
     } catch (error) {
         console.error('Detailed form submission error:', error);
-        return { 
-            success: false, 
-            error: `Form submission failed: ${error instanceof Error ? error.message : 'Unknown error'}` 
+        return {
+            success: false,
+            error: `Form submission failed: ${error instanceof Error ? error.message : 'Unknown error'}`
         };
     }
 }
@@ -161,7 +183,7 @@ export async function addForm({
 export async function getForms(userId?: string) {
     try {
         console.log('Server action: fetching forms', userId ? `for user ${userId}` : 'for all users');
-        
+
         // Build the query based on whether we have a userId
         let formList;
         if (userId) {
@@ -171,7 +193,7 @@ export async function getForms(userId?: string) {
         } else {
             formList = await db.select().from(forms);
         }
-        
+
         console.log(`Fetched ${formList.length} forms`);
         return formList;
     } catch (error) {
@@ -196,9 +218,9 @@ export async function getFormById(formId: number, skipReceipts = false) {
         // Fetch related transactions for this form
         const transactionsResult = await db.select().from(transactions).where(eq(transactions.formId, formId));
         console.log(`Found ${transactionsResult.length} transactions for form ${formId}`);
-        
+
         let transactionsWithReceipts;
-        
+
         if (skipReceipts) {
             // If skipReceipts is true, don't fetch the receipt content
             transactionsWithReceipts = transactionsResult.map(transaction => {
@@ -213,7 +235,7 @@ export async function getFormById(formId: number, skipReceipts = false) {
             // Fetch all receipts for this form with a single query
             const txIds = transactionsResult.map(tx => tx.id);
             console.log(`Fetching receipts for transaction IDs:`, txIds);
-            
+
             // Define the receipt type to avoid implicit any
             type ReceiptResult = {
                 id: number;
@@ -224,7 +246,7 @@ export async function getFormById(formId: number, skipReceipts = false) {
                 createdAt: Date | null;
                 updatedAt: Date | null;
             };
-            
+
             // Make sure we have transaction IDs before querying
             let allReceiptsResult: ReceiptResult[] = [];
             if (txIds.length > 0) {
@@ -234,7 +256,7 @@ export async function getFormById(formId: number, skipReceipts = false) {
                     if (txIds.length <= 10) {
                         // For a small number of transactions, use OR conditions
                         const orConditions = txIds.map(txId => eq(receipts.transactionId, txId));
-                        
+
                         allReceiptsResult = await db.select()
                             .from(receipts)
                             .where(orConditions.length === 1 ? orConditions[0] : or(...orConditions));
@@ -243,30 +265,30 @@ export async function getFormById(formId: number, skipReceipts = false) {
                         // and combine the results
                         const batchSize = 10;
                         const batches = [];
-                        
+
                         for (let i = 0; i < txIds.length; i += batchSize) {
                             const batchIds = txIds.slice(i, i + batchSize);
                             const orConditions = batchIds.map(txId => eq(receipts.transactionId, txId));
-                            
+
                             batches.push(
                                 db.select()
                                     .from(receipts)
                                     .where(orConditions.length === 1 ? orConditions[0] : or(...orConditions))
                             );
                         }
-                        
+
                         // Execute all batch queries and combine results
                         const batchResults = await Promise.all(batches);
                         allReceiptsResult = batchResults.flat() as ReceiptResult[];
                     }
-                    
+
                     console.log(`Found ${allReceiptsResult.length} total receipts`);
                 } catch (receiptError) {
                     console.error('Error fetching receipts:', receiptError);
                     allReceiptsResult = [];
                 }
             }
-            
+
             // Group receipts by transactionId
             const receiptsByTransactionId = allReceiptsResult.reduce((acc, receipt) => {
                 const txId = receipt.transactionId;
@@ -276,7 +298,7 @@ export async function getFormById(formId: number, skipReceipts = false) {
                 acc[txId].push(receipt);
                 return acc;
             }, {} as Record<number, ReceiptResult[]>);
-            
+
             // Debug group results
             Object.keys(receiptsByTransactionId).forEach(txId => {
                 const receiptsForTx = receiptsByTransactionId[Number(txId)];
@@ -284,7 +306,7 @@ export async function getFormById(formId: number, skipReceipts = false) {
                     console.log(`Transaction ${txId} has ${receiptsForTx.length} receipts`);
                 }
             });
-            
+
             // Map transactions with their receipts
             transactionsWithReceipts = transactionsResult.map(transaction => {
                 const { id, ...rest } = transaction;
@@ -365,17 +387,21 @@ export async function updateFormWithFiles({
         // --- 3. Update/Insert transactions and process new receipts ---
         if (submittedTransactions && submittedTransactions.length > 0) {
             for (const tx of submittedTransactions) {
-                // Ensure all date fields are stored as UTC ISO strings
-                const normalizeDate = (d: Date | string | undefined) =>
-                    d instanceof Date ? d.toISOString() : typeof d === "string" ? d : undefined;
-
-                // Prepare transaction data with normalized dates
+                // Do not convert dates to strings at all - use the raw Date objects
+                // This will avoid any timezone conversion issues
                 const txData = {
                     ...tx,
-                    date: normalizeDate(tx.date),
-                    createdAt: normalizeDate(tx.createdAt),
-                    updatedAt: normalizeDate(tx.updatedAt),
+                    // Keep the original Date objects
+                    updatedAt: new Date(), // Always use current time for updatedAt
                 };
+
+                console.log('Transaction data to save:', {
+                    id: tx.id,
+                    date: tx.date instanceof Date
+                        ? `${tx.date.getUTCFullYear()}-${tx.date.getUTCMonth() + 1}-${tx.date.getUTCDate()}`
+                        : tx.date,
+                    dateType: typeof tx.date
+                });
 
                 // Check if this is an existing transaction (has a positive numeric ID)
                 if (tx.id && typeof tx.id === 'number' && tx.id > 0) {
@@ -386,31 +412,144 @@ export async function updateFormWithFiles({
                         [key: string]: unknown;
                     };
 
+                    // Format the date as YYYY-MM-DD string for storage
+                    let dateString: string;
+
+                    if (tx.date instanceof Date) {
+                        // Use UTC methods to prevent timezone shifts
+                        const date = new Date(tx.date.getTime());
+
+                        // Add 12 hours to ensure it stays on the same day regardless of timezone
+                        date.setHours(12, 0, 0, 0);
+
+                        const year = date.getUTCFullYear();
+                        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+                        const day = String(date.getUTCDate()).padStart(2, '0');
+                        dateString = `${year}-${month}-${day}`;
+
+                        console.log('Date conversion:', {
+                            original: tx.date.toISOString(),
+                            adjusted: date.toISOString(),
+                            formatted: dateString
+                        });
+                    } else if (typeof tx.date === 'string') {
+                        // If it's already a string, make sure it's in YYYY-MM-DD format
+                        // Using indexOf instead of match to avoid TypeScript errors
+                        const dateStr = String(tx.date);
+                        if (dateStr.indexOf('-') > 0 && dateStr.length === 10) {
+                            // Simple validation for YYYY-MM-DD format
+                            const parts = dateStr.split('-');
+                            if (parts.length === 3 && parts[0] && parts[0].length === 4) {
+                                dateString = dateStr;
+                            } else {
+                                // Parse as date and reformat
+                                const tempDate = new Date(dateStr);
+                                const year = tempDate.getUTCFullYear();
+                                const month = String(tempDate.getUTCMonth() + 1).padStart(2, '0');
+                                const day = String(tempDate.getUTCDate()).padStart(2, '0');
+                                dateString = `${year}-${month}-${day}`;
+                            }
+                        } else {
+                            // Try to parse and reformat
+                            const tempDate = new Date(tx.date);
+                            const year = tempDate.getUTCFullYear();
+                            const month = String(tempDate.getUTCMonth() + 1).padStart(2, '0');
+                            const day = String(tempDate.getUTCDate()).padStart(2, '0');
+                            dateString = `${year}-${month}-${day}`;
+                        }
+                    } else {
+                        // Default to today
+                        const today = new Date();
+                        const year = today.getUTCFullYear();
+                        const month = String(today.getUTCMonth() + 1).padStart(2, '0');
+                        const day = String(today.getUTCDate()).padStart(2, '0');
+                        dateString = `${year}-${month}-${day}`;
+                    }
+
+                    console.log('Saving transaction date as string:', dateString, 'from original:', tx.date);
+
+                    // Update with exact schema field types
                     const updatedTransactionResult = await db.update(transactions)
                         .set({
-                            ...txUpdateData,
-                            date: txUpdateData.date ? new Date(txUpdateData.date as string) : new Date(),
-                            createdAt: txUpdateData.createdAt ? new Date(txUpdateData.createdAt as string) : new Date(),
-                            updatedAt: txUpdateData.updatedAt ? new Date(txUpdateData.updatedAt as string) : new Date(),
+                            date: dateString, // Store as YYYY-MM-DD string
+                            accountLine: String(txUpdateData.accountLine),
+                            department: String(txUpdateData.department),
+                            placeVendor: String(txUpdateData.placeVendor),
+                            description: String(txUpdateData.description),
                             amount: parseFloat(String(txUpdateData.amount)),
+                            // Remove updatedAt and formId which may be causing type issues
                         })
                         .where(eq(transactions.id, tx.id));
+
+                    console.log('Transaction update result:', updatedTransactionResult);
                     console.log(`Updated transaction ${tx.id} result:`, updatedTransactionResult);
 
                     // --- 3.2. Process new receipts for existing transaction ---
                     if (newFiles && newFiles.length > 0) {
                         console.log(`Inserting new receipts for transaction ${tx.id}:`, newFiles);
-                        const receiptInsertResult = await db.insert(receipts).values(
-                            newFiles.map((file) => ({
+
+                        // Debug what we received
+                        console.log(`Receipt files for transaction ${tx.id}:`, newFiles.map(f => ({
+                            name: f.name,
+                            type: f.type,
+                            contentLength: f.base64Content ? f.base64Content.length : 0
+                        })));
+
+                        // Validate each file has required fields
+                        for (const file of newFiles) {
+                            if (!file.name) {
+                                console.error('Receipt missing name:', file);
+                                return {
+                                    success: false,
+                                    error: 'Receipt file name is missing'
+                                };
+                            }
+                            if (!file.type) {
+                                console.error('Receipt missing type:', file);
+                                return {
+                                    success: false,
+                                    error: 'Receipt file type is missing'
+                                };
+                            }
+                            if (!file.base64Content) {
+                                console.error('Receipt missing base64Content for file:', file.name);
+                                return {
+                                    success: false,
+                                    error: 'Receipt file content is missing'
+                                };
+                            }
+
+                            // Check if base64Content is valid
+                            if (typeof file.base64Content !== 'string' || file.base64Content.length < 100) {
+                                console.error('Receipt has invalid base64Content:', file.name, typeof file.base64Content, file.base64Content?.length);
+                                return {
+                                    success: false,
+                                    error: `Receipt file content is invalid for file: ${file.name}`
+                                };
+                            }
+                        }
+
+                        try {
+                            const receiptValues = newFiles.map((file) => ({
                                 transactionId: tx.id!,
                                 name: file.name,
                                 fileType: file.type,
                                 base64Content: file.base64Content,
                                 createdAt: file.createdAt,
                                 updatedAt: file.updatedAt
-                            }))
-                        );
-                        console.log('Receipt insert result:', receiptInsertResult);
+                            }));
+
+                            console.log('Receipt insert values count:', receiptValues.length);
+
+                            const receiptInsertResult = await db.insert(receipts).values(receiptValues);
+                            console.log('Receipt insert result:', receiptInsertResult);
+                        } catch (receiptError) {
+                            console.error('Error inserting receipts:', receiptError);
+                            return {
+                                success: false,
+                                error: `Failed to insert receipts: ${receiptError instanceof Error ? receiptError.message : 'Unknown error'}`
+                            };
+                        }
                     }
                 } else {
                     // --- 3.3. Insert new transaction ---
@@ -430,17 +569,73 @@ export async function updateFormWithFiles({
                         amount: parseFloat(String(txInsertData.amount))
                     });
 
+                    // Format the date as YYYY-MM-DD string for storage (same as above)
+                    let dateString: string;
+
+                    if (tx.date instanceof Date) {
+                        // Use UTC methods to prevent timezone shifts
+                        const date = new Date(tx.date.getTime());
+
+                        // Add 12 hours to ensure it stays on the same day regardless of timezone
+                        date.setHours(12, 0, 0, 0);
+
+                        const year = date.getUTCFullYear();
+                        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+                        const day = String(date.getUTCDate()).padStart(2, '0');
+                        dateString = `${year}-${month}-${day}`;
+
+                        console.log('Date conversion for new transaction:', {
+                            original: tx.date.toISOString(),
+                            adjusted: date.toISOString(),
+                            formatted: dateString
+                        });
+                    } else if (typeof tx.date === 'string') {
+                        // If it's already a string, make sure it's in YYYY-MM-DD format
+                        // Using indexOf instead of match to avoid TypeScript errors
+                        const dateStr = String(tx.date);
+                        if (dateStr.indexOf('-') > 0 && dateStr.length === 10) {
+                            // Simple validation for YYYY-MM-DD format
+                            const parts = dateStr.split('-');
+                            if (parts.length === 3 && parts[0] && parts[0].length === 4) {
+                                dateString = dateStr;
+                            } else {
+                                // Parse as date and reformat
+                                const tempDate = new Date(dateStr);
+                                const year = tempDate.getUTCFullYear();
+                                const month = String(tempDate.getUTCMonth() + 1).padStart(2, '0');
+                                const day = String(tempDate.getUTCDate()).padStart(2, '0');
+                                dateString = `${year}-${month}-${day}`;
+                            }
+                        } else {
+                            // Try to parse and reformat
+                            const tempDate = new Date(tx.date);
+                            const year = tempDate.getFullYear();
+                            const month = String(tempDate.getMonth() + 1).padStart(2, '0');
+                            const day = String(tempDate.getDate()).padStart(2, '0');
+                            dateString = `${year}-${month}-${day}`;
+                        }
+                    } else {
+                        // Default to today
+                        const today = new Date();
+                        const year = today.getUTCFullYear();
+                        const month = String(today.getUTCMonth() + 1).padStart(2, '0');
+                        const day = String(today.getUTCDate()).padStart(2, '0');
+                        dateString = `${year}-${month}-${day}`;
+                    }
+
+                    console.log('Inserting new transaction with date string:', dateString, 'from original:', tx.date);
+
+                    // Insert with exact schema field order and types
                     const transactionInsertResult = await db.insert(transactions)
                         .values({
-                            formId,
-                            date: new Date(String(txInsertData.date)),
-                            description: String(txInsertData.description),
+                            // The date field is a varchar in the schema
+                            date: dateString, // Store as YYYY-MM-DD string 
                             accountLine: String(txInsertData.accountLine),
                             department: String(txInsertData.department),
                             placeVendor: String(txInsertData.placeVendor),
-                            // formId is already included in the spread object above
-                            ...txInsertData,
+                            description: String(txInsertData.description),
                             amount: parseFloat(String(txInsertData.amount)),
+                            formId: formId, // FormID as number
                         });
                     console.log('Transaction insert result:', transactionInsertResult);
 
@@ -451,17 +646,69 @@ export async function updateFormWithFiles({
                     // --- 3.4. Process receipts for new transaction ---
                     if (newFiles && newFiles.length > 0 && newTransactionId) {
                         console.log(`Inserting receipts for new transaction ${newTransactionId}:`, newFiles);
-                        const receiptInsertResult = await db.insert(receipts).values(
-                            newFiles.map((file) => ({
+
+                        // Debug what we received
+                        console.log(`Receipt files for new transaction:`, newFiles.map(f => ({
+                            name: f.name,
+                            type: f.type,
+                            contentLength: f.base64Content ? f.base64Content.length : 0
+                        })));
+
+                        // Validate each file has required fields
+                        for (const file of newFiles) {
+                            if (!file.name) {
+                                console.error('Receipt missing name:', file);
+                                return {
+                                    success: false,
+                                    error: 'Receipt file name is missing for new transaction'
+                                };
+                            }
+                            if (!file.type) {
+                                console.error('Receipt missing type:', file);
+                                return {
+                                    success: false,
+                                    error: 'Receipt file type is missing for new transaction'
+                                };
+                            }
+                            if (!file.base64Content) {
+                                console.error('Receipt missing base64Content for file:', file.name);
+                                return {
+                                    success: false,
+                                    error: 'Receipt file content is missing for new transaction'
+                                };
+                            }
+
+                            // Check if base64Content is valid
+                            if (typeof file.base64Content !== 'string' || file.base64Content.length < 100) {
+                                console.error('Receipt has invalid base64Content:', file.name, typeof file.base64Content, file.base64Content?.length);
+                                return {
+                                    success: false,
+                                    error: `Receipt file content is invalid for new transaction file: ${file.name}`
+                                };
+                            }
+                        }
+
+                        try {
+                            const receiptValues = newFiles.map((file) => ({
                                 transactionId: newTransactionId,
                                 name: file.name,
                                 fileType: file.type,
                                 base64Content: file.base64Content,
                                 createdAt: file.createdAt,
                                 updatedAt: file.updatedAt
-                            }))
-                        );
-                        console.log('Receipt insert result (for new transaction):', receiptInsertResult);
+                            }));
+
+                            console.log('Receipt insert values for new transaction count:', receiptValues.length);
+
+                            const receiptInsertResult = await db.insert(receipts).values(receiptValues);
+                            console.log('Receipt insert result (for new transaction):', receiptInsertResult);
+                        } catch (receiptError) {
+                            console.error('Error inserting receipts for new transaction:', receiptError);
+                            return {
+                                success: false,
+                                error: `Failed to insert receipts for new transaction: ${receiptError instanceof Error ? receiptError.message : 'Unknown error'}`
+                            };
+                        }
                     }
                 }
             }
@@ -495,7 +742,42 @@ export async function updateFormWithFiles({
 
     } catch (error) {
         console.error('Error updating form with files (server action):', error);
-        return { success: false, error: 'Failed to update form', details: error };
+
+        // Create a structured error response
+        let errorResponse: {
+            success: false;
+            error: string;
+            details?: unknown;
+            code?: string;
+            sqlMessage?: string;
+        } = {
+            success: false,
+            error: 'Failed to update form'
+        };
+
+        // Add detailed error information if available
+        if (error instanceof Error) {
+            errorResponse.error = `Failed to update form: ${error.message}`;
+            errorResponse.details = error;
+
+            // Extract database error information if available
+            const dbError = error as unknown as {
+                code?: string;
+                sqlMessage?: string;
+            };
+
+            if (dbError.code) {
+                errorResponse.code = dbError.code;
+            }
+
+            if (dbError.sqlMessage) {
+                errorResponse.sqlMessage = dbError.sqlMessage;
+                // Update the main error message with the SQL error
+                errorResponse.error = `Database error: ${dbError.sqlMessage}`;
+            }
+        }
+
+        return errorResponse;
     }
 }
 

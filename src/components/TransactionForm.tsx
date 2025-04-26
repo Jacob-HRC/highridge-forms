@@ -87,11 +87,31 @@ export function TransactionForm({
                             !field.value && "text-muted-foreground"
                           )}
                         >
-                          {field.value ? (
-                            format(field.value, "PPP")
-                          ) : (
+                          {field.value ? 
+                            (() => {
+                              // Format with UTC date components to avoid timezone issues
+                              let dateToFormat: Date;
+                              
+                              if (field.value instanceof Date) {
+                                dateToFormat = field.value;
+                              } else {
+                                // Parse string to date
+                                dateToFormat = new Date(String(field.value));
+                              }
+                              
+                              // Create a date object that won't shift due to timezone
+                              const utcYear = dateToFormat.getUTCFullYear();
+                              const utcMonth = dateToFormat.getUTCMonth();
+                              const utcDay = dateToFormat.getUTCDate();
+                              
+                              // Create a new date with these components at noon UTC
+                              const stableDate = new Date(Date.UTC(utcYear, utcMonth, utcDay, 12, 0, 0));
+                              
+                              return format(stableDate, "PPP");
+                            })()
+                           : 
                             <span>Pick a date</span>
-                          )}
+                          }
                           <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                         </Button>
                       </FormControl>
@@ -100,7 +120,31 @@ export function TransactionForm({
                       <Calendar
                         mode="single"
                         selected={field.value}
-                        onSelect={field.onChange}
+                        onSelect={(date) => {
+                          if (date) {
+                            // Create a date in UTC to avoid timezone issues
+                            // Extract UTC components from the selected date
+                            const year = date.getUTCFullYear();
+                            const month = date.getUTCMonth();
+                            const day = date.getUTCDate();
+                            
+                            // Create a new UTC date at noon
+                            const utcDate = new Date(Date.UTC(year, month, day, 12, 0, 0));
+                            
+                            console.log('Calendar date selected:', {
+                              originalDate: date.toISOString(),
+                              utcDate: utcDate.toISOString(),
+                              year: year,
+                              month: month + 1,
+                              day: day
+                            });
+
+                            // Use the UTC date
+                            field.onChange(utcDate);
+                          } else {
+                            field.onChange(null);
+                          }
+                        }}
                         disabled={(date) =>
                           date > new Date() || date < new Date("1900-01-01")
                         }
@@ -227,11 +271,11 @@ export function TransactionForm({
           </div>
 
           <Receipts
-            receipts={fieldItem.receipts?.filter((receipt): receipt is { id: number; name: string; fileType: string; base64Content: string; createdAt: Date; updatedAt: Date; } => 
-              receipt !== null && 
+            receipts={fieldItem.receipts?.filter((receipt): receipt is { id: number; name: string; fileType: string; base64Content: string; createdAt: Date; updatedAt: Date; } =>
+              receipt !== null &&
               receipt !== undefined &&
               typeof receipt === 'object' &&
-              'id' in receipt && 
+              'id' in receipt &&
               receipt.id !== undefined &&
               'name' in receipt &&
               'fileType' in receipt &&

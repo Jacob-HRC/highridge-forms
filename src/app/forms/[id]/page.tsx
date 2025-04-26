@@ -4,6 +4,9 @@
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { reimbursementFormSchema } from "~/lib/schema";
+import { updateFormWithFiles } from "~/app/serveractions/forms/reimburesementformactions";
 import {
     Form,
     FormField,
@@ -21,16 +24,42 @@ import { deleteReceipt } from "~/app/serveractions/forms/reimburesementformactio
 import { TransactionForm } from "~/components/TransactionForm";
 import { Skeleton } from "~/components/ui/skeleton";
 
+// Helper function to convert File to base64 string
+async function fileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+            const result = reader.result as string;
+            if (!result) {
+                reject(new Error(`Failed to read file: ${file.name}`));
+                return;
+            }
+            resolve(result);
+        };
+        reader.onerror = (error) => {
+            console.error('FileReader error:', error);
+            reject(error);
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
 export default function EditFormPage() {
     const params = useParams();
     const router = useRouter();
     const [formMetaLoading, setFormMetaLoading] = useState(true);
     const [receiptsLoading, setReceiptsLoading] = useState(true);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isEditing, setIsEditing] = useState(false);
     const formId = Number(params.id); // Get the form ID from the URL params, assuming it's a number
 
-    const form = useForm<FormValues>();
+    // Use deletedTransactionIds to track transactions to be deleted on save
+    const [deletedTransactionIds, setDeletedTransactionIds] = useState<number[]>([]);
+
+    const form = useForm<FormValues>({
+        resolver: zodResolver(reimbursementFormSchema),
+    });
     const { control, reset } = form;
 
     const { fields, remove } = useFieldArray({
@@ -71,10 +100,67 @@ export default function EditFormPage() {
                         createdAt: fetchedData.form.createdAt ? new Date(fetchedData.form.createdAt) : new Date(),
                         updatedAt: fetchedData.form.updatedAt ? new Date(fetchedData.form.updatedAt) : new Date(),
                         transactions: fetchedData.transactions.map(tx => {
-                            // Ensure date is properly converted to Date object
+                            // Parse the string date from the database
                             let txDate;
                             try {
-                                txDate = tx.date ? new Date(tx.date) : new Date();
+                                if (tx.date) {
+                                    // If it's already a string in YYYY-MM-DD format, create a Date object
+                                    if (typeof tx.date === 'string' && typeof tx.date === 'string' && tx.date.indexOf('-') > 0) {
+                                        // Safer check that doesn't rely on match method
+                                        const parts = tx.date.split('-');
+                                        if (parts.length === 3) {
+                                            const [year, month, day] = parts.map(Number);
+                                            if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+                                                // Create a date object in UTC
+                                                txDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+                                                console.log('Parsed date from string:', tx.date, 'to UTC Date:', txDate.toISOString());
+                                            } else {
+                                                // Fallback if parts aren't valid numbers
+                                                const tempDate = new Date(tx.date);
+                                                txDate = new Date(Date.UTC(
+                                                    tempDate.getUTCFullYear(),
+                                                    tempDate.getUTCMonth(),
+                                                    tempDate.getUTCDate(),
+                                                    12, 0, 0
+                                                ));
+                                                console.log('Parsed date with UTC fallback:', tx.date, 'to Date:', txDate.toISOString());
+                                            }
+                                        } else {
+                                            // Not in expected format, use regular date parsing with UTC
+                                            const tempDate = new Date(tx.date);
+                                            txDate = new Date(Date.UTC(
+                                                tempDate.getUTCFullYear(),
+                                                tempDate.getUTCMonth(),
+                                                tempDate.getUTCDate(),
+                                                12, 0, 0
+                                            ));
+                                            console.log('Parsed date with UTC fallback (2):', tx.date, 'to Date:', txDate.toISOString());
+                                        }
+                                    } else {
+                                        // Otherwise handle as before but using UTC
+                                        const tempDate = new Date(tx.date);
+                                        const year = tempDate.getUTCFullYear();
+                                        const month = tempDate.getUTCMonth();
+                                        const day = tempDate.getUTCDate();
+                                        txDate = new Date(Date.UTC(year, month, day, 12, 0, 0));
+                                        
+                                        console.log('Converted date with UTC:', tx.date, 'to Date:', txDate.toISOString());
+                                    }
+                                } else {
+                                    // Default date
+                                    txDate = new Date();
+                                    console.log('Using default date:', txDate);
+                                }
+                                
+                                // Store the original string format for later use
+                                const dateString = typeof tx.date === 'string' ? tx.date : null;
+                                
+                                console.log('Date info:', {
+                                    original: tx.date,
+                                    dateString: dateString,
+                                    dateObject: txDate,
+                                    formattedForDisplay: txDate.toLocaleDateString()
+                                });
                             } catch (dateError) {
                                 console.error('Error parsing date:', tx.date, dateError);
                                 txDate = new Date();
@@ -179,6 +265,204 @@ export default function EditFormPage() {
         void loadReceipts();
     }, [formMetaLoading, error, formId, form]);
 
+    // Save form changes
+    const handleSaveChanges = async () => {
+        try {
+            setIsSubmitting(true);
+            setError(null);
+            
+            // Get form data from form state
+            const formData = form.getValues();
+            console.log('Form data to save:', formData);
+            
+            // Debug transactions and files
+            formData.transactions.forEach((tx, index) => {
+                console.log(`Transaction ${index}:`, {
+                    id: tx.id,
+                    date: tx.date,
+                    amount: tx.amount,
+                    description: tx.description,
+                    receiptsCount: tx.receipts?.length || 0,
+                    hasNewFiles: tx.newFiles ? 'yes' : 'no',
+                    newFilesType: tx.newFiles ? (
+                        tx.newFiles instanceof FileList ? 'FileList' : 
+                        Array.isArray(tx.newFiles) ? 'Array' : 
+                        typeof tx.newFiles
+                    ) : 'none',
+                    newFilesCount: tx.newFiles ? (
+                        tx.newFiles instanceof FileList ? tx.newFiles.length : 
+                        Array.isArray(tx.newFiles) ? tx.newFiles.length : 
+                        'unknown'
+                    ) : 0
+                });
+            });
+            
+            // Make sure we're using Date objects consistently
+            console.log('Form data date check before processing:', formData.transactions.map(tx => ({
+                id: tx.id,
+                date: tx.date instanceof Date 
+                    ? `${tx.date.getFullYear()}-${tx.date.getMonth()+1}-${tx.date.getDate()}` 
+                    : tx.date,
+                dateType: typeof tx.date
+            })));
+            
+            // Process file uploads and convert to base64
+            const transactionsWithFiles = await Promise.all(
+                formData.transactions.map(async (tx) => {
+                    // Ensure we have a proper Date object for the date
+                    let txDate = tx.date;
+                    
+                    // Check if there are files to process
+                    if (!tx.newFiles) {
+                        return {
+                            ...tx,
+                            date: txDate // Ensure we're returning the original Date object
+                        };
+                    }
+                    
+                    // Different handling depending on whether we have a FileList or already processed files
+                    let processedFiles = [];
+                    
+                    if (tx.newFiles instanceof FileList || (Array.isArray(tx.newFiles) && tx.newFiles[0] instanceof File)) {
+                        // It's a FileList, needs conversion to base64
+                        console.log("Processing FileList for transaction:", tx.id);
+                        const fileList = Array.isArray(tx.newFiles) ? tx.newFiles : Array.from(tx.newFiles);
+                        
+                        try {
+                            processedFiles = await Promise.all(
+                                fileList.map(async (file, index) => {
+                                    console.log(`Processing file ${index + 1}/${fileList.length}: ${file.name} (${file.type})`);
+                                    
+                                    // Get base64 content with explicit error handling
+                                    try {
+                                        const base64Content = await fileToBase64(file);
+                                        // Verify the base64 content is not empty
+                                        if (!base64Content) {
+                                            throw new Error(`Empty base64 content for file: ${file.name}`);
+                                        }
+                                        console.log(`Successfully converted ${file.name} to base64 (length: ${base64Content.length})`);
+                                        
+                                        return {
+                                            name: file.name,
+                                            type: file.type,
+                                            base64Content: base64Content,
+                                            createdAt: new Date(),
+                                            updatedAt: new Date()
+                                        };
+                                    } catch (error) {
+                                        console.error(`Error converting file to base64: ${error}`);
+                                        throw new Error(`Failed to process file ${file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                                    }
+                                })
+                            );
+                        } catch (error) {
+                            console.error(`Error processing files for transaction ${tx.id}:`, error);
+                            setError(`Error processing files: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                            throw error;
+                        }
+                    } else if (Array.isArray(tx.newFiles) && tx.newFiles.length > 0) {
+                        // It's already processed files with base64Content, just validate
+                        console.log("Validating pre-processed files for transaction:", tx.id);
+                        
+                        for (const file of tx.newFiles) {
+                            if (!file.name || !file.type || !file.base64Content) {
+                                console.error("Invalid file object:", file);
+                                throw new Error("Invalid file object: missing required properties");
+                            }
+                        }
+                        
+                        processedFiles = tx.newFiles;
+                    }
+                    
+                    // Return transaction with processed files
+                    console.log(`Processed ${processedFiles.length} files for transaction ${tx.id}`);
+                    return {
+                        ...tx,
+                        date: tx.date, // Explicitly preserve the Date object
+                        newFiles: processedFiles
+                    };
+                })
+            );
+            
+            // Update form data with processed files and deleted transaction IDs
+            const processedFormData = {
+                ...formData,
+                transactions: transactionsWithFiles,
+                deletedTransactionIds: deletedTransactionIds
+            };
+            
+            console.log('Processed form data ready for submission:', processedFormData);
+            
+            // Call the server action to update the form
+            const result = await updateFormWithFiles({
+                id: formId,
+                form: processedFormData
+            });
+            
+            console.log('Form update result:', result);
+            
+            if (result.success) {
+                // Show success message and exit edit mode
+                alert('Form saved successfully!');
+                setIsEditing(false);
+                
+                // Refresh the form data with the updated data
+                if (result.form && result.transactions) {
+                    const refreshedFormData = {
+                        ...result.form,
+                        transactions: result.transactions.map(tx => ({
+                            id: tx.id,
+                            date: tx.date ? new Date(tx.date) : new Date(),
+                            createdAt: tx.createdAt ? new Date(tx.createdAt) : new Date(),
+                            updatedAt: tx.updatedAt ? new Date(tx.updatedAt) : new Date(),
+                            accountLine: tx.accountLine,
+                            department: tx.department,
+                            placeVendor: tx.placeVendor,
+                            description: tx.description || "",
+                            amount: tx.amount,
+                            receipts: tx.receipts || [],
+                            newFiles: []
+                        }))
+                    };
+                    
+                    // Reset form with fresh data
+                    reset(refreshedFormData as FormValues);
+                    
+                    // Clear deleted transactions list
+                    setDeletedTransactionIds([]);
+                }
+            } else {
+                // If the server returned an error, display it
+                let errorMessage = result.error || 'Failed to save form';
+                
+                // Check if there are more detailed error information
+                if (result.details) {
+                    console.error('Detailed server error:', result.details);
+                    if (result.details instanceof Error) {
+                        errorMessage += `: ${result.details.message}`;
+                    } else if (typeof result.details === 'object') {
+                        // Try to extract useful info from error object
+                        const detailsObj = result.details as Record<string, unknown>;
+                        if (detailsObj.sqlMessage) {
+                            errorMessage += `: Database error - ${detailsObj.sqlMessage}`;
+                        } else if (detailsObj.message) {
+                            errorMessage += `: ${detailsObj.message}`;
+                        }
+                    }
+                }
+                
+                setError(errorMessage);
+                console.error('Form save error:', errorMessage);
+                throw new Error(errorMessage);
+            }
+        } catch (error) {
+            console.error('Error saving form:', error);
+            setError(`Failed to save form: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
     const handleRemoveTransaction = (index: number) => {
         const tx = fields[index] as FormValues['transactions'][number];
         console.log('Removing transaction:', tx);
@@ -186,6 +470,7 @@ export default function EditFormPage() {
         const txId = Number(tx.id);
         if (!isNaN(txId) && txId > 0) {  // Make sure it's a valid positive number
             console.log('Adding to deletedTransactions:', txId);
+            setDeletedTransactionIds(prev => [...prev, txId]);
         }
         remove(index);
     };
@@ -336,8 +621,17 @@ export default function EditFormPage() {
                             </div>
                         </div>
                         
-                        {/* Prevent default form submission behavior by adding onSubmit that just prevents default */}
-                        <form id="form" onSubmit={(e) => e.preventDefault()} className="space-y-6">
+                        {/* Form with submission handler */}
+                        <form 
+                            id="form" 
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                if (isEditing && !isSubmitting) {
+                                    void handleSaveChanges();
+                                }
+                            }} 
+                            className="space-y-6"
+                        >
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                                 {formMetaLoading ? (
                                     <>
@@ -428,9 +722,24 @@ export default function EditFormPage() {
                                         <Button
                                             type="submit"
                                             className="bg-blue-600 hover:bg-blue-700 text-white w-full md:w-auto"
+                                            disabled={isSubmitting}
                                         >
-                                            Save Changes
+                                            {isSubmitting ? (
+                                                <>
+                                                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-t-transparent border-white"></div>
+                                                    Saving...
+                                                </>
+                                            ) : (
+                                                'Save Changes'
+                                            )}
                                         </Button>
+                                    </div>
+                                )}
+                                
+                                {/* Show any form submission errors */}
+                                {error && isEditing && (
+                                    <div className="mt-4 p-3 bg-red-900/30 text-red-300 border border-red-700 rounded-md">
+                                        {error}
                                     </div>
                                 )}
                             </div>
