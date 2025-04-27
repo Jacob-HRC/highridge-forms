@@ -32,10 +32,13 @@ export function TransactionForm({
 }: TransactionFormProps) {
   const { control } = form;
 
-  const { fields, append } = useFieldArray({
+  // Get the useFieldArray methods from the form
+  const { fields, append, remove } = useFieldArray({
     control,
     name: 'transactions',
   });
+  
+  console.log('Transaction form fields count:', fields?.length);
 
   return (
     <div className="space-y-8">
@@ -286,20 +289,50 @@ export function TransactionForm({
               'fileType' in receipt &&
               'base64Content' in receipt
             ) ?? []}
-            transactionId={fieldItem.id}
+            transactionId={typeof fieldItem.id === 'number' ? fieldItem.id : Number(fieldItem.id)}
             control={control}
             fileFieldName={`transactions.${index}.newFiles` as Path<FormValues>}
             isEditing={isEditing}
             isLoading={isLoadingReceipts}
-            onDeleteReceipt={(transactionId, receiptId) => onDeleteReceipt?.(transactionId, receiptId)}
+            onDeleteReceipt={(transactionId, receiptId) => {
+              console.log('Delete receipt button clicked:', { transactionId, receiptId });
+              if (typeof onDeleteReceipt === 'function') {
+                onDeleteReceipt(transactionId, receiptId);
+              } else {
+                console.error('onDeleteReceipt is not a function');
+              }
+            }}
           />
 
-          {isEditing && onRemoveTransaction && (
+          {isEditing && (
             <Button
               type="button"
               variant="outline"
               className="absolute top-2 right-4 text-destructive hover:text-white hover:bg-blue-600/90 transition-colors"
-              onClick={() => onRemoveTransaction(index)}
+              onClick={() => {
+                console.log('Remove button clicked for transaction index:', index);
+                
+                // First, capture the transaction ID if it exists
+                const formValues = form.getValues();
+                const transactions = formValues.transactions;
+                
+                if (transactions && index < transactions.length) {
+                  const tx = transactions[index];
+                  console.log('Transaction to remove:', tx);
+                  
+                  // If we have a parent handler, call it first to track deleted IDs
+                  if (typeof onRemoveTransaction === 'function') {
+                    onRemoveTransaction(index);
+                  } else if (tx && 'id' in tx && tx.id && typeof tx.id === 'number' && tx.id > 0) {
+                    // If we don't have a parent handler but there's an ID, alert the user
+                    alert('This transaction will be marked for deletion when you save the form.');
+                  }
+                }
+                
+                // Always remove the field from the form regardless
+                remove(index);
+                console.log('Removed transaction at index:', index);
+              }}
             >
               Remove
             </Button>

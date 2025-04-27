@@ -120,9 +120,9 @@ export async function addForm({
                 } else {
                     // Default to today
                     const today = new Date();
-                    const year = today.getFullYear();
-                    const month = String(today.getMonth() + 1).padStart(2, '0');
-                    const day = String(today.getDate()).padStart(2, '0');
+                    const year = today.getUTCFullYear();
+                    const month = String(today.getUTCMonth() + 1).padStart(2, '0');
+                    const day = String(today.getUTCDate()).padStart(2, '0');
                     txDateString = `${year}-${month}-${day}`;
                 }
 
@@ -609,9 +609,9 @@ export async function updateFormWithFiles({
                         } else {
                             // Try to parse and reformat
                             const tempDate = new Date(tx.date);
-                            const year = tempDate.getFullYear();
-                            const month = String(tempDate.getMonth() + 1).padStart(2, '0');
-                            const day = String(tempDate.getDate()).padStart(2, '0');
+                            const year = tempDate.getUTCFullYear();
+                            const month = String(tempDate.getUTCMonth() + 1).padStart(2, '0');
+                            const day = String(tempDate.getUTCDate()).padStart(2, '0');
                             dateString = `${year}-${month}-${day}`;
                         }
                     } else {

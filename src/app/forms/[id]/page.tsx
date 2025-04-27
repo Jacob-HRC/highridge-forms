@@ -66,6 +66,7 @@ export default function EditFormPage() {
     });
     const { control, reset } = form;
 
+    // Set up useFieldArray hook
     const { fields, remove } = useFieldArray({
         control,
         name: "transactions",
@@ -307,7 +308,7 @@ export default function EditFormPage() {
             console.log('Form data date check before processing:', formData.transactions.map(tx => ({
                 id: tx.id,
                 date: tx.date instanceof Date
-                    ? `${tx.date.getFullYear()}-${tx.date.getMonth() + 1}-${tx.date.getDate()}`
+                    ? `${tx.date.getUTCFullYear()}-${tx.date.getUTCMonth() + 1}-${tx.date.getUTCDate()}`
                     : tx.date,
                 dateType: typeof tx.date
             })));
@@ -490,78 +491,108 @@ export default function EditFormPage() {
         }
     };
 
+    // This function only tracks deleted IDs but doesn't remove the transaction
+    // The actual removal happens in the TransactionForm component
     const handleRemoveTransaction = (index: number) => {
-        const tx = fields[index] as FormValues['transactions'][number];
-        console.log('Removing transaction:', tx);
-        // Check if it's an existing transaction from the database
-        const txId = Number(tx.id);
-        if (!isNaN(txId) && txId > 0) {  // Make sure it's a valid positive number
-            console.log('Adding to deletedTransactions:', txId);
-            setDeletedTransactionIds(prev => [...prev, txId]);
-        }
-        remove(index);
-    };
-
-    async function handleDeleteReceipt(receiptId: number) {
         try {
-            // Show confirmation dialog
-            if (!confirm("Are you sure you want to delete this receipt?")) {
-                return; // User cancelled the deletion
+            // Get the current form values
+            const formValues = form.getValues();
+            const transactions = formValues.transactions;
+
+            if (!transactions || index >= transactions.length) {
+                console.error('Invalid transaction index or no transactions in handleRemoveTransaction');
+                return;
             }
 
+            // Get the transaction and track for deletion if it has an ID
+            const tx = transactions[index];
+            if (tx && tx.id && typeof tx.id === 'number' && tx.id > 0) {
+                console.log('Adding transaction ID to deletedTransactionIds list:', tx.id);
+                setDeletedTransactionIds(prev => [...prev, tx.id as number]);
+            }
+        } catch (error) {
+            console.error('Error in handleRemoveTransaction:', error);
+        }
+    };
+
+    async function handleDeleteReceipt(transactionId: number, receiptId: number) {
+        try {
+            console.log(`Deleting receipt: ${receiptId} from transaction: ${transactionId} in form: ${formId}`);
+            
+            // Show confirmation dialog
+            if (!confirm("Are you sure you want to delete this receipt?")) {
+                console.log('Deletion cancelled by user');
+                return; // User cancelled the deletion
+            }
+            
             // Call the server action directly
+            console.log('Calling server action deleteReceipt with:', { formId, receiptId });
             const result = await deleteReceipt({
                 formId: formId, // Use the formId from the page parameters
                 receiptId: receiptId
             });
-
+            
+            console.log('Server action result:', result);
+            
             if (!result.success) {
+                console.error('Server returned error:', result.error);
                 throw new Error(result.error ?? 'Failed to delete receipt');
             }
-
+            
+            console.log('Receipt deleted successfully on server, refreshing form data');
+            
             // Refresh the form data to show the updated state
             const updatedFormData = await getFormById(formId);
             if (updatedFormData) {
+                console.log('Got updated form data:', {
+                    formId: updatedFormData.form.id,
+                    transactions: updatedFormData.transactions.length
+                });
+                
+                // Format the data properly for the form
                 const refreshedFormData = {
                     ...updatedFormData.form,
-                    transactions: updatedFormData.transactions.map(tx => ({
-                        id: tx.transactionId,
-                        date: tx.date ? new Date(tx.date) : new Date(),
-                        createdAt: tx.createdAt ?? undefined,
-                        updatedAt: tx.updatedAt ?? undefined,
-                        accountLine: tx.accountLine,
-                        department: tx.department,
-                        placeVendor: tx.placeVendor,
-                        description: tx.description ?? "",
-                        amount: tx.amount,
-                        receipts: tx.receipts?.map((receipt: {
-                            id: number;
-                            name: string;
-                            fileType: string;
-                            base64Content: string;
-                            createdAt?: Date | string | null;
-                            updatedAt?: Date | string | null;
-                        }) => ({
-                            ...receipt,
-                            createdAt: receipt.createdAt ?? undefined,
-                            updatedAt: receipt.updatedAt ?? undefined,
-                        })) ?? [],
-                        newFiles: [],
-                    })),
+                    transactions: updatedFormData.transactions.map(tx => {
+                        console.log(`Processing transaction ${tx.transactionId} with ${tx.receipts?.length ?? 0} receipts`);
+                        return {
+                            id: tx.transactionId,
+                            date: tx.date ? new Date(tx.date) : new Date(),
+                            createdAt: tx.createdAt ? new Date(tx.createdAt) : new Date(),
+                            updatedAt: tx.updatedAt ? new Date(tx.updatedAt) : new Date(),
+                            accountLine: tx.accountLine,
+                            department: tx.department,
+                            placeVendor: tx.placeVendor,
+                            description: tx.description ?? "",
+                            amount: tx.amount,
+                            receipts: (tx.receipts ?? []).map((receipt: {
+                                id: number;
+                                name: string;
+                                fileType: string;
+                                base64Content: string;
+                                createdAt?: Date | string | null;
+                                updatedAt?: Date | string | null;
+                            }) => ({
+                                id: receipt.id,
+                                name: receipt.name,
+                                fileType: receipt.fileType,
+                                base64Content: receipt.base64Content,
+                                createdAt: receipt.createdAt ? new Date(receipt.createdAt) : new Date(),
+                                updatedAt: receipt.updatedAt ? new Date(receipt.updatedAt) : new Date(),
+                            })),
+                            newFiles: [],
+                        };
+                    }),
                 };
-                reset({
-                    ...refreshedFormData,
-                    createdAt: refreshedFormData.createdAt ?? new Date(),
-                    updatedAt: refreshedFormData.updatedAt ?? new Date(),
-                    transactions: refreshedFormData.transactions.map(tx => ({
-                        ...tx,
-                        createdAt: tx.createdAt ?? new Date(),
-                        updatedAt: tx.updatedAt ?? new Date()
-                    }))
-                } as FormValues);
+                
+                // Reset the form with the refreshed data
+                console.log('Resetting form with refreshed data');
+                reset(refreshedFormData as FormValues);
+            } else {
+                console.warn('No updated form data returned after receipt deletion');
             }
 
             // Show success message
+            console.log('Receipt deletion complete');
             alert('Receipt deleted successfully');
         } catch (e) {
             console.error('Error deleting receipt:', e);
@@ -720,7 +751,7 @@ export default function EditFormPage() {
                                     <TransactionForm
                                         form={form}
                                         isEditing={isEditing}
-                                        onRemoveTransaction={handleRemoveTransaction}
+                                        onRemoveTransaction={isEditing ? handleRemoveTransaction : undefined}
                                         onDeleteReceipt={handleDeleteReceipt}
                                         isLoadingReceipts={receiptsLoading}
                                     />
