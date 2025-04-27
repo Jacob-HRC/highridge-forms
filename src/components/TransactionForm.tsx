@@ -37,7 +37,7 @@ export function TransactionForm({
     control,
     name: 'transactions',
   });
-  
+
   console.log('Transaction form fields count:', fields?.length);
 
   return (
@@ -307,19 +307,19 @@ export function TransactionForm({
           {isEditing && (
             <Button
               type="button"
-              variant="outline"
-              className="absolute top-2 right-4 text-destructive hover:text-white hover:bg-blue-600/90 transition-colors"
+              variant="destructive"
+              className="absolute top-0 right-6 hover:text-white"
               onClick={() => {
                 console.log('Remove button clicked for transaction index:', index);
-                
+
                 // First, capture the transaction ID if it exists
                 const formValues = form.getValues();
                 const transactions = formValues.transactions;
-                
+
                 if (transactions && index < transactions.length) {
                   const tx = transactions[index];
                   console.log('Transaction to remove:', tx);
-                  
+
                   // If we have a parent handler, call it first to track deleted IDs
                   if (typeof onRemoveTransaction === 'function') {
                     onRemoveTransaction(index);
@@ -328,13 +328,13 @@ export function TransactionForm({
                     alert('This transaction will be marked for deletion when you save the form.');
                   }
                 }
-                
+
                 // Always remove the field from the form regardless
                 remove(index);
                 console.log('Removed transaction at index:', index);
               }}
             >
-              Remove
+              Delete Transaction
             </Button>
           )}
         </div>

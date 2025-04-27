@@ -518,29 +518,29 @@ export default function EditFormPage() {
     async function handleDeleteReceipt(transactionId: number, receiptId: number) {
         try {
             console.log(`Deleting receipt: ${receiptId} from transaction: ${transactionId} in form: ${formId}`);
-            
+
             // Show confirmation dialog
             if (!confirm("Are you sure you want to delete this receipt?")) {
                 console.log('Deletion cancelled by user');
                 return; // User cancelled the deletion
             }
-            
+
             // Call the server action directly
             console.log('Calling server action deleteReceipt with:', { formId, receiptId });
             const result = await deleteReceipt({
                 formId: formId, // Use the formId from the page parameters
                 receiptId: receiptId
             });
-            
+
             console.log('Server action result:', result);
-            
+
             if (!result.success) {
                 console.error('Server returned error:', result.error);
                 throw new Error(result.error ?? 'Failed to delete receipt');
             }
-            
+
             console.log('Receipt deleted successfully on server, refreshing form data');
-            
+
             // Refresh the form data to show the updated state
             const updatedFormData = await getFormById(formId);
             if (updatedFormData) {
@@ -548,7 +548,7 @@ export default function EditFormPage() {
                     formId: updatedFormData.form.id,
                     transactions: updatedFormData.transactions.length
                 });
-                
+
                 // Format the data properly for the form
                 const refreshedFormData = {
                     ...updatedFormData.form,
@@ -583,7 +583,7 @@ export default function EditFormPage() {
                         };
                     }),
                 };
-                
+
                 // Reset the form with the refreshed data
                 console.log('Resetting form with refreshed data');
                 reset(refreshedFormData as FormValues);
@@ -770,7 +770,8 @@ export default function EditFormPage() {
                             <div className="flex justify-between mt-6">
                                 <Button
                                     type="button"
-                                    variant="outline"
+                                    //className="bg-gray-100 hover:bg-gray-700 text-black hover:text-white w-full md:w-auto"
+                                    variant="secondary"
                                     onClick={() => router.push('/dashboard')}
                                 >
                                     Back to Dashboard
