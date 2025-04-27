@@ -78,7 +78,7 @@ export function TransactionForm({
               control={control}
               name={`transactions.${index}.date`}
               render={({ field }) => (
-                <FormItem className="flex flex-col">
+                <FormItem className="flex flex-col pt-1">
                   <FormLabel className="text-sm font-medium">Date of Transaction</FormLabel>
                   <Popover>
                     <PopoverTrigger asChild>
@@ -86,7 +86,7 @@ export function TransactionForm({
                         <Button
                           variant="outline"
                           className={cn(
-                            "w-full pl-3 text-left font-normal bg-gray-700 border-gray-600 hover:bg-blue-600/50 hover:border-blue-500",
+                            "w-full pl-3 text-left font-normal bg-gray-800 border-gray-600 hover:bg-gray-800 hover:border-gray-500 hover:text-white",
                             !field.value && "text-muted-foreground"
                           )}
                           disabled={!isEditing}
@@ -172,7 +172,7 @@ export function TransactionForm({
                       type="number"
                       step="0.01"
                       min="0"
-                      className="text-right bg-gray-700 border-gray-600 hover:border-gray-500 focus:border-gray-400 text-gray-100"
+                      className="text-right bg-gray-800 border-gray-600 hover:border-gray-500 focus:border-gray-400 text-gray-100"
                       {...field}
                       onChange={(e) => field.onChange(parseFloat(e.target.value))}
                       disabled={!isEditing}
@@ -197,7 +197,7 @@ export function TransactionForm({
                       onValueChange={field.onChange}
                       disabled={!isEditing}
                     >
-                      <SelectTrigger className="w-full bg-gray-800 border-gray-700 hover:border-blue-500 hover:bg-blue-600/20 text-gray-100">
+                      <SelectTrigger className="w-full bg-gray-800 border-gray-700 hover:border-gray-600 text-gray-100">
                         <SelectValue placeholder="Select account line" />
                       </SelectTrigger>
                       <SelectContent className="bg-gray-800 border-gray-700">
@@ -250,9 +250,12 @@ export function TransactionForm({
               name={`transactions.${index}.placeVendor`}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-medium">Place/Vendor</FormLabel>
+                  <FormLabel className="text-sm font-medium text-gray-100">Place/Vendor</FormLabel>
                   <FormControl>
-                    <Input {...field} disabled={!isEditing} />
+                    <Input
+                      className="bg-gray-800 border-gray-700 hover:border-gray-600 focus:border-gray-500 text-gray-100"
+                      {...field}
+                      disabled={!isEditing} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
