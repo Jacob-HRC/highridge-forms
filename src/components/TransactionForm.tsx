@@ -297,7 +297,7 @@ export function TransactionForm({
             onDeleteReceipt={(transactionId, receiptId) => {
               console.log('Delete receipt button clicked:', { transactionId, receiptId });
               if (typeof onDeleteReceipt === 'function') {
-                onDeleteReceipt(transactionId, receiptId);
+                void onDeleteReceipt(transactionId, receiptId);
               } else {
                 console.error('onDeleteReceipt is not a function');
               }
