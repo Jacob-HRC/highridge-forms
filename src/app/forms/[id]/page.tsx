@@ -66,12 +66,6 @@ export default function EditFormPage() {
     });
     const { control, reset } = form;
 
-    // Set up useFieldArray hook
-    const { fields, remove } = useFieldArray({
-        control,
-        name: "transactions",
-    });
-
     // Step 1: First load just the form data and transactions without receipts (faster)
     useEffect(() => {
         async function loadFormMetadata() {
@@ -506,9 +500,9 @@ export default function EditFormPage() {
 
             // Get the transaction and track for deletion if it has an ID
             const tx = transactions[index];
-            if (tx && tx.id && typeof tx.id === 'number' && tx.id > 0) {
+            if (tx?.id && typeof tx.id === 'number' && tx.id > 0) {
                 console.log('Adding transaction ID to deletedTransactionIds list:', tx.id);
-                setDeletedTransactionIds(prev => [...prev, tx.id as number]);
+                setDeletedTransactionIds(prev => [...prev, tx.id!]);
             }
         } catch (error) {
             console.error('Error in handleRemoveTransaction:', error);
